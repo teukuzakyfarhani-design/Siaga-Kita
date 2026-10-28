@@ -31,3 +31,235 @@
 @media (max-width: 760px) { .pilot-sidebar { width: 275px; transform: translateX(-100%); transition: transform .2s ease; box-shadow: 10px 0 35px #182b2720; }.pilot-sidebar-open { transform: translateX(0); }.pilot-scrim { position: fixed; inset: 0; z-index: 19; display: block; border: 0; background: #13231e70; }.pilot-mobile-close { display: grid; width: 29px; height: 29px; place-items: center; margin-left: auto; border: 0; border-radius: 7px; background: #f3f7f5; color: #62716c; }.pilot-main { margin-left: 0; }.pilot-topbar { height: 56px; padding: 0 13px; }.pilot-breadcrumb { gap: 7px; font-size: 9px; }.pilot-menu-button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 6px; background: #f2f6f4; color: #607169; }.pilot-role-chip { display: none; }.pilot-top-actions { gap: 7px; }.pilot-content { padding: 13px 12px; }.pilot-alert { align-items: flex-start; font-size: 8px; }.pilot-alert svg { margin-top: 1px; }.pilot-welcome { align-items: flex-start; margin: 20px 0 14px; }.pilot-welcome h1 { font-size: 20px; }.pilot-welcome p { max-width: 270px; font-size: 9px; line-height: 1.5; }.pilot-welcome > .pilot-primary { min-height: 33px; flex: 0 0 auto; padding: 0 8px; font-size: 9px; }.pilot-metrics { grid-template-columns: 1fr 1fr; gap: 8px; }.pilot-metric { min-height: 90px; gap: 7px; padding: 10px 8px; }.pilot-metric-icon { width: 27px; height: 27px; }.pilot-metric > div > span { font-size: 8px; }.pilot-metric strong { font-size: 18px; }.pilot-metric small { font-size: 7px; }.pilot-dashboard-grid { gap: 9px; margin-top: 9px; }.pilot-panel-heading { padding: 12px 11px 10px; }.pilot-panel-heading h2 { font-size: 11px; }.pilot-panel-heading p { font-size: 8px; }.pilot-map-panel .live-map { height: 235px; min-height: 220px; margin: 0 8px; width: calc(100% - 16px); }.pilot-panel-foot { padding: 9px; font-size: 7px; }.pilot-panel-foot button { font-size: 8px; }.pilot-footer { flex-direction: column; gap: 4px; font-size: 7px; }.pilot-list-heading { align-items: flex-start; gap: 7px; padding: 12px; }.pilot-secure-chip { font-size: 7px; }.pilot-report-card { margin: 0 11px; padding: 12px 0; }.report-card-meta { gap: 8px; font-size: 8px; }.review-controls { align-items: stretch; flex-direction: column; }.review-buttons { justify-content: flex-end; }.full-map-panel { padding: 8px; }.full-map-panel .live-map { height: 58vh; min-height: 350px; }.map-count-chip { font-size: 7px; }.pilot-form-grid { grid-template-columns: 1fr; gap: 0; }.pilot-modal { padding: 15px; }.report-picker-map { height: 210px; }.report-picker-map .live-map { min-height: 210px; }.pilot-modal-heading h2 { font-size: 13px; }.pilot-modal-heading small { font-size: 8px; }.upload-control { flex-wrap: wrap; }.upload-control input { max-width: 170px; }.setup-card, .auth-card { padding: 21px; } }
 @media (max-width: 900px) { .guest-main-grid { grid-template-columns: minmax(0, 1fr); }.guest-auth-card { position: static; }.guest-main-grid { max-width: 760px; }.guest-hero { max-width: 760px; }.guest-topbar { padding: 0 20px; } }
 @media (max-width: 600px) { .guest-topbar { height: 56px; gap: 7px; padding: 0 12px; }.guest-topbar .auth-brand strong { font-size: 18px; }.guest-topbar nav { display: none; }.guest-login-link { min-height: 31px; padding: 0 9px; font-size: 8px; }.guest-hero { grid-template-columns: 1fr; gap: 16px; padding: 25px 14px 18px; }.guest-hero h1 { max-width: 450px; font-size: 28px; }.guest-hero-copy { font-size: 10px; }.guest-region-card { display: grid; grid-template-columns: 38px auto; column-gap: 10px; padding: 12px; }.guest-region-card > span { grid-row: span 2; }.guest-region-card > strong { margin: 0; font-size: 25px; }.guest-region-card p { margin: 0; }.guest-region-card small { grid-column: 1 / -1; margin-top: 7px; }.guest-main-grid { gap: 10px; padding: 0 12px 15px; }.guest-map-panel .live-map { height: 270px; min-height: 240px; margin: 0 8px; width: calc(100% - 16px); }.guest-guides { padding: 12px; }.guest-guide-grid { grid-template-columns: 1fr; }.guest-guide-grid article { padding: 10px; }.guest-footer { flex-direction: column; gap: 5px; padding: 12px; font-size: 7px; }.guest-auth-card { padding: 18px; } }
+
+:root {
+  --ink: #18332b;
+  --muted: #687b73;
+  --green: #147b5b;
+  --green-dark: #0e6348;
+  --canvas: #f4f7f5;
+}
+
+html { scroll-behavior: smooth; }
+body { color: var(--ink); font-size: 15px; line-height: 1.55; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button, a { transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid #4ca982;
+  outline-offset: 3px;
+}
+.pilot-shell, .guest-shell { background: #f4f7f5; }
+.pilot-sidebar { border-color: #e3ebe6; background: #fff; box-shadow: 8px 0 28px #163a2b08; }
+.pilot-brand > span:first-child, .auth-brand > span { background: #e4f2eb; color: #147b5b; }
+.pilot-brand strong span, .auth-brand strong span { color: #147b5b; }
+.pilot-workspace { margin-top: 30px; border-color: #e5ede8; border-radius: 12px; background: linear-gradient(145deg, #fbfdfb, #f5f9f6); padding: 13px; }
+.pilot-workspace small, .pilot-nav-label { font-size: 10px; }
+.pilot-workspace strong { font-size: 14px; }
+.pilot-workspace span { font-size: 12px; }
+.pilot-nav-label { margin-top: 28px; }
+.pilot-nav { gap: 6px; }
+.pilot-nav button { height: 44px; border-radius: 10px; font-size: 14px; }
+.pilot-nav button.active { background: #e8f4ed; color: #116b4e; }
+.pilot-help { border-color: #e4ece7; border-radius: 12px; background: #f8fbf9; padding: 13px; }
+.pilot-help strong { font-size: 13px; }
+.pilot-help p { font-size: 11px; }
+.pilot-user { gap: 10px; }
+.pilot-user strong { font-size: 12px; }
+.pilot-user small { font-size: 11px; }
+.pilot-topbar { height: 68px; border-color: #e5ece8; background: #ffffffed; padding-right: clamp(20px, 3.5vw, 48px); padding-left: clamp(20px, 3.5vw, 48px); }
+.pilot-breadcrumb { font-size: 13px; }
+.pilot-role-chip { font-size: 11px; }
+.pilot-live { font-size: 10px; }
+.pilot-content { max-width: 1600px; padding: 30px clamp(20px, 3.5vw, 48px) 24px; }
+.pilot-alert, .pilot-error, .pilot-success { border-radius: 11px; padding: 12px 14px; font-size: 13px; }
+.pilot-error, .pilot-success { margin-top: 14px; }
+.pilot-welcome { align-items: center; margin: 32px 0 22px; }
+.pilot-kicker { font-size: 11px; letter-spacing: .75px; }
+.pilot-welcome h1 { margin-top: 10px; font-size: clamp(27px, 2.2vw, 34px); letter-spacing: -.8px; }
+.pilot-welcome p { font-size: 14px; }
+.pilot-primary { min-height: 43px; border-radius: 9px; padding: 0 16px; font-size: 13px; box-shadow: 0 5px 12px #147c5d20; }
+.pilot-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px #147c5d28; }
+.pilot-metrics { gap: 15px; }
+.pilot-metric { min-height: 124px; gap: 13px; border-color: #e3ebe6; border-radius: 14px; padding: 17px; box-shadow: 0 4px 16px #18372a08; }
+.pilot-metric-icon { width: 38px; height: 38px; border-radius: 10px; }
+.pilot-metric > div { gap: 6px; }
+.pilot-metric > div > span { font-size: 12px; }
+.pilot-metric strong { font-size: clamp(22px, 2vw, 28px); }
+.pilot-metric small { font-size: 10px; line-height: 1.4; }
+.pilot-dashboard-grid { gap: 16px; margin-top: 16px; }
+.pilot-panel { border-color: #e3ebe6; border-radius: 14px; box-shadow: 0 5px 20px #18372a08; }
+.pilot-panel-heading { padding: 19px 19px 15px; }
+.pilot-panel-heading h2, .pilot-list-heading h2 { font-size: 15px; }
+.pilot-panel-heading p, .pilot-list-heading p { font-size: 12px; }
+.pilot-panel-heading > button { font-size: 12px; }
+.pilot-map-panel .live-map { height: 330px; border-radius: 10px; }
+.map-loading { font-size: 13px; }
+.pilot-panel-foot { padding: 12px 16px; font-size: 11px; }
+.pilot-panel-foot button, .pilot-panel-bottom-link { font-size: 11px; }
+.compact-report-list { padding: 0 18px; }
+.compact-report { gap: 11px; padding: 14px 0; }
+.compact-report-icon { width: 36px; height: 36px; border-radius: 10px; }
+.compact-report-info strong { font-size: 12px; }
+.compact-report-info p { font-size: 11px; }
+.compact-report-info small { font-size: 10px; }
+.status { gap: 5px; padding: 5px 8px; font-size: 10px; }
+.empty-state { gap: 10px; }
+.empty-state strong { font-size: 14px; }
+.empty-state span { font-size: 12px; }
+.pilot-operational-note { border-radius: 11px; padding: 12px 14px; font-size: 12px; }
+.pilot-footer { margin-top: 22px; font-size: 10px; }
+.pilot-list-heading { padding: 20px; }
+.pilot-secure-chip, .map-count-chip { font-size: 10px; }
+.pilot-report-card { margin: 0 20px; padding: 19px 0; }
+.report-card-title { gap: 12px; }
+.report-card-icon { width: 40px; height: 40px; border-radius: 10px; }
+.report-card-title h3 { font-size: 14px; }
+.report-card-title h3 small { font-size: 11px; }
+.report-card-meta { gap: 16px; margin: 12px 0; font-size: 12px; }
+.report-description { font-size: 13px; }
+.evidence-link, .location-precision { font-size: 11px; }
+.report-history { margin-top: 15px; }
+.report-history > strong { font-size: 12px; }
+.report-history-item { font-size: 12px; }
+.report-history-item small { font-size: 10px; }
+.review-controls { border-radius: 10px; padding: 13px; }
+.review-controls label { gap: 7px; font-size: 11px; }
+.review-controls input { height: 39px; border-radius: 8px; padding: 0 11px; font-size: 12px; }
+.review-buttons button { min-height: 38px; border-radius: 8px; padding: 0 12px; font-size: 11px; }
+.full-map-panel { padding: 15px; }
+.full-map-panel .live-map { border-radius: 10px; }
+.map-privacy-foot, .map-data-note { font-size: 11px; }
+.pilot-modal-backdrop { padding: 24px; }
+.pilot-modal { border-radius: 18px; padding: 26px; box-shadow: 0 24px 80px #06171055; }
+.pilot-modal-heading { margin-bottom: 22px; }
+.pilot-modal-heading h2 { font-size: 19px; }
+.pilot-modal-heading small { font-size: 12px; }
+.pilot-modal form > label, .pilot-form-grid label { gap: 8px; margin: 14px 0; font-size: 12px; }
+.pilot-modal input:not([type="file"]), .pilot-modal select, .pilot-modal textarea, .auth-card input, .auth-card select { min-height: 44px; border-radius: 9px; padding: 10px 12px; font-size: 14px; }
+.pilot-modal textarea { min-height: 94px; }
+.optional-label, .selected-coordinate { font-size: 11px; }
+.pilot-map-instruction, .pilot-privacy-note { font-size: 12px; line-height: 1.5; }
+.report-picker-map, .report-picker-map .live-map { min-height: 265px; }
+.upload-control { min-height: 42px; border-radius: 9px; }
+.pilot-modal-actions { gap: 10px; margin-top: 20px; }
+.pilot-cancel { min-height: 43px; border-radius: 9px; padding: 0 16px; }
+.pilot-modal-heading > button { width: 36px; height: 36px; }
+.pilot-modal-heading > button:disabled { cursor: wait; opacity: .5; }
+.setup-screen { background: radial-gradient(ellipse at top, #e5f2ea, #f4f7f5 58%); }
+.setup-card, .auth-card { border-color: #e2ebe5; border-radius: 18px; padding: 30px; box-shadow: 0 14px 40px #18372a12; }
+.setup-card h1, .auth-card h1 { font-size: 27px; }
+.setup-card > p:not(.pilot-kicker), .auth-card > p { font-size: 14px; }
+.setup-card ol { font-size: 13px; }
+.setup-card code { font-size: 11px; }
+.auth-card form { gap: 15px; }
+.auth-card form label { gap: 8px; font-size: 12px; }
+.auth-card .pilot-live { margin-bottom: 12px; }
+.auth-submit { width: 100%; min-height: 46px; margin-top: 4px; }
+.auth-switch { font-size: 12px; }
+.auth-switch button { font-size: 12px; }
+.auth-disclaimer { font-size: 11px; line-height: 1.55; }
+.guest-shell { background: radial-gradient(ellipse at 50% -10%, #e5f2ea 0, #f4f7f5 43rem); }
+.guest-topbar { height: 74px; border-color: #e2ebe5; padding-right: max(28px, calc((100vw - 1360px) / 2)); padding-left: max(28px, calc((100vw - 1360px) / 2)); }
+.guest-topbar nav { gap: 30px; }
+.guest-topbar nav a { font-size: 13px; }
+.guest-login-link { min-height: 42px; font-size: 12px; }
+.guest-hero { max-width: 1360px; gap: 50px; padding: 62px 32px 46px; }
+.guest-hero > div:first-child > .pilot-live { margin-bottom: 22px; }
+.guest-hero h1 { font-size: clamp(36px, 4vw, 54px); }
+.guest-hero-copy { margin-bottom: 22px; font-size: 16px; }
+.guest-hero-caveat { margin-top: 13px; font-size: 11px; }
+.guest-region-card { border-color: #e0eae3; border-radius: 18px; padding: 25px; box-shadow: 0 12px 35px #18372a10; }
+.guest-region-card > span { width: 42px; height: 42px; border-radius: 12px; }
+.guest-region-card > strong { font-size: 44px; }
+.guest-region-card p { font-size: 13px; }
+.guest-region-card small { font-size: 12px; }
+.guest-main-grid { max-width: 1360px; gap: 20px; padding-right: 32px; padding-left: 32px; }
+.guest-map-panel .live-map { height: 400px; border-radius: 11px; }
+.guest-map-empty > p { font-size: 12px; }
+.guest-map-error { font-size: 13px; }
+.guest-map-error button { font-size: 12px; }
+.guest-guides { margin-top: 18px; border-color: #e2ebe5; border-radius: 14px; padding: 20px; }
+.guest-section-heading > span { width: 36px; height: 36px; border-radius: 10px; }
+.guest-section-heading h2 { font-size: 16px; }
+.guest-section-heading p { font-size: 12px; }
+.guest-guide-grid { gap: 12px; margin-top: 17px; }
+.guest-guide-grid article { border-color: #e8eee9; border-radius: 11px; padding: 15px; }
+.guest-guide-grid h3 { font-size: 12px; }
+.guest-guide-grid p, .guest-source-note { font-size: 11px; }
+.guest-footer { max-width: 1360px; padding: 18px 32px 28px; font-size: 10px; }
+
+@media (max-width: 1120px) {
+  .pilot-content { padding-right: 24px; padding-left: 24px; }
+  .pilot-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .pilot-topbar { height: 60px; padding: 0 14px; }
+  .pilot-breadcrumb { gap: 8px; font-size: 12px; }
+  .pilot-top-actions { gap: 8px; }
+  .pilot-live { font-size: 9px; }
+  .pilot-content { padding: 16px 14px 20px; }
+  .pilot-alert { font-size: 11px; }
+  .pilot-welcome { align-items: flex-start; margin: 22px 0 17px; }
+  .pilot-welcome h1 { font-size: 25px; }
+  .pilot-welcome p { font-size: 12px; }
+  .pilot-welcome > .pilot-primary { min-height: 39px; padding: 0 11px; font-size: 11px; }
+  .pilot-metric { min-height: 104px; gap: 9px; padding: 12px 10px; }
+  .pilot-metric-icon { width: 31px; height: 31px; }
+  .pilot-metric > div > span { font-size: 10px; }
+  .pilot-metric strong { font-size: 19px; }
+  .pilot-metric small { font-size: 9px; }
+  .pilot-panel-heading { padding: 14px 13px 11px; }
+  .pilot-panel-heading h2 { font-size: 13px; }
+  .pilot-panel-heading p { font-size: 10px; }
+  .pilot-map-panel .live-map { height: 260px; min-height: 230px; margin: 0 9px; width: calc(100% - 18px); }
+  .pilot-panel-foot { align-items: flex-start; gap: 8px; font-size: 9px; }
+  .pilot-panel-foot button { font-size: 9px; }
+  .pilot-footer { flex-direction: column; gap: 5px; font-size: 9px; }
+  .pilot-list-heading { padding: 14px; }
+  .pilot-report-card { margin: 0 13px; padding: 15px 0; }
+  .report-card-title h3 { font-size: 12px; }
+  .report-card-meta { gap: 9px; font-size: 10px; }
+  .report-description { font-size: 12px; }
+  .review-controls { align-items: stretch; flex-direction: column; }
+  .review-controls label { font-size: 10px; }
+  .review-buttons { justify-content: flex-end; }
+  .review-buttons button { font-size: 10px; }
+  .full-map-panel { padding: 9px; }
+  .full-map-panel .live-map { height: 58vh; min-height: 350px; }
+  .pilot-modal-backdrop { place-items: end center; padding: 10px; }
+  .pilot-modal { width: 100%; max-height: calc(100dvh - 20px); border-radius: 18px 18px 12px 12px; padding: 19px; }
+  .pilot-form-grid { grid-template-columns: 1fr; gap: 0; }
+  .pilot-modal-heading h2 { font-size: 17px; }
+  .pilot-modal-heading small { font-size: 10px; }
+  .guest-topbar { height: 62px; padding: 0 16px; }
+  .guest-topbar nav { display: none; }
+  .guest-login-link { min-height: 38px; padding: 0 12px; font-size: 11px; }
+  .guest-hero { grid-template-columns: 1fr; gap: 21px; padding: 35px 18px 25px; }
+  .guest-hero h1 { font-size: clamp(32px, 8vw, 43px); }
+  .guest-hero-copy { font-size: 14px; }
+  .guest-region-card { display: grid; grid-template-columns: 42px 1fr; column-gap: 12px; padding: 15px; }
+  .guest-region-card > span { grid-row: span 2; }
+  .guest-region-card > strong { margin: 0; font-size: 28px; }
+  .guest-region-card p { margin: 0; }
+  .guest-region-card small { grid-column: 1 / -1; margin-top: 8px; }
+  .guest-main-grid { gap: 14px; padding: 0 14px 18px; }
+  .guest-map-panel .live-map { height: 300px; min-height: 250px; margin: 0 9px; width: calc(100% - 18px); }
+  .guest-guides { padding: 15px; }
+  .guest-guide-grid { grid-template-columns: 1fr; }
+  .guest-guide-grid article { padding: 13px; }
+  .guest-footer { flex-direction: column; gap: 6px; padding: 14px; font-size: 9px; }
+  .auth-card, .setup-card { padding: 23px; }
+}
+@media (max-width: 420px) {
+  .pilot-welcome { flex-direction: column; }
+  .pilot-welcome > .pilot-primary { align-self: stretch; }
+  .pilot-metrics { gap: 8px; }
+  .pilot-metric { min-height: 98px; }
+  .pilot-list-heading { align-items: flex-start; flex-direction: column; }
+  .report-card-title > div { align-items: flex-start; flex-direction: column; }
+  .report-card-title .status { align-self: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}

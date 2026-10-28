@@ -1,5 +1,6 @@
 "use client";
-
+import ReportModal from "@/components/ReportModal";
+import Navbar from "@/components/Navbar";
 import dynamic from "next/dynamic";
 import {
   Activity,
@@ -24,7 +25,7 @@ import {
   X,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { MapReport } from "@/components/IncidentMap";
 import "./pilot.css";
@@ -146,11 +147,16 @@ export default function PilotPage() {
   const [selectedPoint, setSelectedPoint] = useState<[number, number] | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [busyReport, setBusyReport] = useState<string | null>(null);
+  const activeUserId = useRef<string | null>(null);
+  const reportLoadRequest = useRef(0);
 
   const isStaff = profile?.role === "admin" || profile?.role === "officer";
   const loadProfileAndReports = useCallback(
     async (userId: string) => {
       if (!supabase) return;
+      const requestId = ++reportLoadRequest.current;
+      const isCurrentRequest = () =>
+        activeUserId.current === userId && reportLoadRequest.current === requestId;
       setLoading(true);
       setError("");
       const profileResult = await supabase
@@ -158,6 +164,7 @@ export default function PilotPage() {
         .select("id, full_name, role")
         .eq("id", userId)
         .single();
+      if (!isCurrentRequest()) return;
       if (profileResult.error) {
         setError(
           `Profil belum dapat dimuat: ${profileResult.error.message}. Pastikan migrasi pilot sudah dijalankan.`,
@@ -174,6 +181,7 @@ export default function PilotPage() {
           "id, report_code, reporter_id, incident_type, district, locality, description, latitude, longitude, evidence_path, status, verified_by, created_at, updated_at",
         )
         .order("created_at", { ascending: false });
+      if (!isCurrentRequest()) return;
       if (reportsResult.error) {
         setError(`Laporan gagal dimuat: ${reportsResult.error.message}`);
         setLoading(false);
@@ -182,6 +190,7 @@ export default function PilotPage() {
 
       const loadedReports = (reportsResult.data ?? []) as Report[];
       const mapResult = await supabase.rpc("published_incident_map");
+      if (!isCurrentRequest()) return;
       if (mapResult.error) {
         setError(`Peta laporan terverifikasi gagal dimuat: ${mapResult.error.message}`);
       } else {
@@ -193,7 +202,9 @@ export default function PilotPage() {
         const eventResult = await supabase
           .from("report_events")
           .select("id, report_id, actor_id, from_status, to_status, note, created_at")
-          .in("report_id", loadedReports.map((report) => report.id));
+          .in("report_id", loadedReports.map((report) => report.id))
+          .order("created_at", { ascending: true });
+        if (!isCurrentRequest()) return;
         if (eventResult.error) {
           setError(`Riwayat status laporan gagal dimuat: ${eventResult.error.message}`);
         } else {
@@ -211,6 +222,7 @@ export default function PilotPage() {
           const signed = await supabase.storage
             .from("report-evidence")
             .createSignedUrl(report.evidence_path, 60 * 10);
+          if (!isCurrentRequest()) return report;
           if (signed.error) {
             setError(`Bukti ${report.report_code} tidak dapat dibuka: ${signed.error.message}`);
             return report;
@@ -218,6 +230,7 @@ export default function PilotPage() {
           return { ...report, evidence_url: signed.data.signedUrl };
         }),
       );
+      if (!isCurrentRequest()) return;
       setReports(withEvidence);
       setLoading(false);
     },
@@ -238,12 +251,23 @@ export default function PilotPage() {
         return;
       }
       setSession(data.session);
+      activeUserId.current = data.session?.user.id ?? null;
       if (data.session) await loadProfileAndReports(data.session.user.id);
       else setLoading(false);
     };
     void loadSession();
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      const nextUserId = nextSession?.user.id ?? null;
+      const previousUserId = activeUserId.current;
+      activeUserId.current = nextUserId;
+      reportLoadRequest.current += 1;
       setSession(nextSession);
+      if (previousUserId !== nextUserId) {
+        setProfile(null);
+        setReports([]);
+        setMapReports([]);
+        setReportEvents([]);
+      }
       if (nextSession) {
         window.setTimeout(() => {
           if (mounted) void loadProfileAndReports(nextSession.user.id);
@@ -251,11 +275,14 @@ export default function PilotPage() {
       } else {
         setProfile(null);
         setReports([]);
+        setMapReports([]);
+        setReportEvents([]);
         setLoading(false);
       }
     });
     return () => {
       mounted = false;
+      reportLoadRequest.current += 1;
       data.subscription.unsubscribe();
     };
   }, [supabase, loadProfileAndReports]);
@@ -272,6 +299,11 @@ export default function PilotPage() {
     if (authMode === "signup") {
       const fullName = String(form.get("full_name") || "").trim();
       const requestedRole = String(form.get("requested_role") || "citizen");
+      if (fullName.length < 2) {
+        setError("Nama lengkap harus berisi minimal 2 karakter.");
+        setAuthLoading(false);
+        return;
+      }
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -412,12 +444,19 @@ export default function PilotPage() {
         busy={authLoading}
         error={error}
         notice={notice}
+        onLogout={signOut}
       />
     );
   }
 
   return (
     <main className="pilot-shell">
+      <Navbar
+        userRole={profile?.role ?? "citizen"}
+        userEmail={session.user.email}
+        onLogout={signOut}
+      />
+
       <aside className={`pilot-sidebar ${mobileNavOpen ? "pilot-sidebar-open" : ""}`}>
         <a className="pilot-brand" href="#dashboard" onClick={() => setActivePage("Dashboard")}>
           <span><ShieldCheck size={22} /></span>
@@ -504,6 +543,7 @@ export default function PilotPage() {
               reportEvents={reportEvents}
               userId={session.user.id}
               isStaff={Boolean(isStaff)}
+              loading={loading}
               busyReport={busyReport}
               reviewNotes={reviewNotes}
               setReviewNotes={setReviewNotes}
@@ -512,7 +552,7 @@ export default function PilotPage() {
             />
           )}
           {activePage === "Peta kejadian" && (
-            <MapPage reports={mapReports} />
+            <MapPage reports={mapReports} loading={loading} />
           )}
           <footer className="pilot-footer">
             <span>SiagaKita Aceh · Pilot terbatas</span>
@@ -521,51 +561,16 @@ export default function PilotPage() {
         </div>
       </section>
 
-      {showReportForm && (
-        <div className="pilot-modal-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !busyReport) setShowReportForm(false);
-        }}>
-          <section className="pilot-modal" role="dialog" aria-modal="true" aria-labelledby="new-report-title">
-            <header className="pilot-modal-heading">
-              <div><span className="pilot-modal-icon"><Siren size={20} /></span><span><h2 id="new-report-title">Laporkan kejadian</h2><small>Laporan baru hanya terlihat oleh Anda dan petugas.</small></span></div>
-              <button aria-label="Tutup formulir" onClick={() => setShowReportForm(false)}><X size={19} /></button>
-            </header>
-            <form onSubmit={submitReport}>
-              <div className="pilot-form-grid">
-                <label>Jenis kejadian
-                  <select name="incident_type" required defaultValue="">
-                    <option value="" disabled>Pilih jenis</option>
-                    {reportTypes.map((type) => <option key={type}>{type}</option>)}
-                  </select>
-                </label>
-                <label>Kabupaten/kota
-                  <select name="district" required defaultValue="">
-                    <option value="" disabled>Pilih wilayah</option>
-                    {acehDistricts.map((district) => <option key={district}>{district}</option>)}
-                  </select>
-                </label>
-              </div>
-              <label>Area umum <input name="locality" required maxLength={160} placeholder="Contoh: kecamatan atau nama desa" /></label>
-              <label>Keterangan <span className="optional-label">Opsional</span><textarea name="description" rows={3} maxLength={1000} placeholder="Jelaskan kondisi yang Anda amati. Hindari data pribadi korban." /></label>
-              <div className="pilot-map-instruction"><MapPin size={16} /> Klik peta untuk memilih titik perkiraan kejadian. Titik laporan menunggu verifikasi.</div>
-              <div className="report-picker-map">
-                <IncidentMap reports={[]} selectedLocation={selectedPoint} onSelect={(latitude, longitude) => setSelectedPoint([latitude, longitude])} canPick />
-              </div>
-              <div className={`selected-coordinate ${selectedPoint ? "coordinate-selected" : ""}`}>
-                {selectedPoint ? `Titik dipilih: ${selectedPoint[0].toFixed(5)}, ${selectedPoint[1].toFixed(5)}` : "Belum ada titik dipilih"}
-              </div>
-              <label className="upload-label">Foto pendukung <span className="optional-label">Opsional · JPG/PNG/WebP maksimal 5 MB</span>
-                <span className="upload-control"><Upload size={16} /><span>Pilih foto</span><input type="file" name="evidence" accept="image/jpeg,image/png,image/webp" /></span>
-              </label>
-              <div className="pilot-privacy-note"><ShieldCheck size={16} /> Data lokasi tepat dan foto bersifat privat selama laporan menunggu verifikasi. Jangan unggah foto yang mengekspos identitas sensitif.</div>
-              <div className="pilot-modal-actions">
-                <button type="button" className="pilot-cancel" disabled={busyReport === "new"} onClick={() => setShowReportForm(false)}>Batal</button>
-                <button type="submit" className="pilot-primary" disabled={busyReport === "new"}>{busyReport === "new" ? "Mengirim…" : <><Plus size={16} /> Kirim laporan</>}</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+      <ReportModal
+        isOpen={showReportForm}
+        onClose={() => setShowReportForm(false)}
+        onSubmit={submitReport}
+        selectedPoint={selectedPoint}
+        setSelectedPoint={setSelectedPoint}
+        reportTypes={reportTypes}
+        acehDistricts={acehDistricts}
+        busy={busyReport === "new"}
+      />
     </main>
   );
 }
@@ -597,6 +602,7 @@ function GuestExperience({
   busy,
   error,
   notice,
+  onLogout,
 }: {
   mode: "signin" | "signup";
   setMode: (mode: "signin" | "signup") => void;
@@ -604,6 +610,7 @@ function GuestExperience({
   busy: boolean;
   error: string;
   notice: string;
+  onLogout: () => void;
 }) {
   const supabase = getSupabaseClient();
   const [reports, setReports] = useState<MapReport[]>([]);
@@ -640,17 +647,10 @@ function GuestExperience({
 
   return (
     <main className="guest-shell">
-      <header className="guest-topbar">
-        <a className="auth-brand" href="#beranda">
-          <span><ShieldCheck size={23} /></span>
-          <strong>siaga<span>kita</span></strong>
-        </a>
-        <nav aria-label="Navigasi halaman publik">
-          <a href="#peta-publik">Peta kejadian</a>
-          <a href="#panduan">Panduan kesiapsiagaan</a>
-        </nav>
-        <a className="pilot-primary guest-login-link" href="#akun">Masuk / Daftar</a>
-      </header>
+      <Navbar
+        userRole="guest"
+        onLogout={onLogout}
+      />
 
       <section className="guest-hero" id="beranda">
         <div>
@@ -789,7 +789,9 @@ function Dashboard({
   onCreateReport: () => void;
 }) {
   const pending = reports.filter((report) => report.status === "pending").length;
-  const active = reports.filter((report) => ["verified", "in_progress"].includes(report.status)).length;
+  const active = reports.filter(
+    (report) => report.status === "verified" || report.status === "in_progress",
+  ).length;
   const mine = reports.filter((report) => report.reporter_id === userId).length;
   return (
     <>
@@ -882,6 +884,7 @@ function ReportsPage({
   reportEvents,
   userId,
   isStaff,
+  loading,
   busyReport,
   reviewNotes,
   setReviewNotes,
@@ -892,6 +895,7 @@ function ReportsPage({
   reportEvents: ReportEvent[];
   userId: string;
   isStaff: boolean;
+  loading: boolean;
   busyReport: string | null;
   reviewNotes: Record<string, string>;
   setReviewNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -905,8 +909,8 @@ function ReportsPage({
         <button className="pilot-primary" onClick={onCreateReport}><Plus size={17} /> Buat laporan</button>
       </section>
       <section className="pilot-panel reports-list-panel">
-        <div className="pilot-list-heading"><div><h2>{reports.length} laporan tersedia</h2><p>Daftar diperbarui langsung dari database pilot.</p></div><span className="pilot-secure-chip"><ShieldCheck size={14} /> Terbatas sesuai peran</span></div>
-        {reports.length === 0 ? <EmptyReports /> : reports.map((report) => (
+        <div className="pilot-list-heading"><div><h2>{loading ? "Memuat laporan…" : `${reports.length} laporan tersedia`}</h2><p>Daftar diperbarui langsung dari database pilot.</p></div><span className="pilot-secure-chip"><ShieldCheck size={14} /> Terbatas sesuai peran</span></div>
+        {loading ? <div className="map-loading">Memuat laporan bersama…</div> : reports.length === 0 ? <EmptyReports /> : reports.map((report) => (
           <ReportCard
             key={report.id}
             report={report}
@@ -984,16 +988,22 @@ function ReportCard({
   );
 }
 
-function MapPage({ reports }: { reports: MapReport[] }) {
+function MapPage({ reports, loading }: { reports: MapReport[]; loading: boolean }) {
   return (
     <>
       <section className="pilot-welcome">
         <div><div className="pilot-kicker"><i /> 23 KABUPATEN/KOTA</div><h1>Peta kejadian Aceh</h1><p>Menampilkan titik dari laporan yang sudah diverifikasi atau sedang ditangani.</p></div>
-        <span className="map-count-chip"><MapPin size={15} />{reports.length} titik tampil</span>
+        <span className="map-count-chip"><MapPin size={15} />{loading ? "Memuat titik…" : `${reports.length} titik tampil`}</span>
       </section>
       <section className="pilot-panel full-map-panel">
-        {reports.length === 0 ? <div className="map-empty-overlay">Belum ada laporan terverifikasi untuk ditampilkan di peta.</div> : null}
-        <IncidentMap reports={reports} />
+        {loading ? (
+          <div className="map-loading">Memuat peta dan laporan terverifikasi…</div>
+        ) : (
+          <>
+            {reports.length === 0 && <div className="map-empty-overlay">Belum ada laporan terverifikasi untuk ditampilkan di peta.</div>}
+            <IncidentMap reports={reports} />
+          </>
+        )}
         <div className="map-privacy-foot"><ShieldCheck size={15} /> Titik laporan pada peta untuk pengguna non-petugas digeneralisasi demi privasi.</div>
       </section>
       <p className="map-data-note">Peta menggunakan OpenStreetMap. Keakuratan pin berasal dari pelapor dan harus diperiksa petugas; tampilan peta bukan instruksi evakuasi.</p>
