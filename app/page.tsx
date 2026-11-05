@@ -28,6 +28,7 @@ import type { Session } from "@supabase/supabase-js";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { MapReport } from "@/components/IncidentMap";
+import SiagaKitaLogo from "@/components/SiagaKitaLogo";
 import "./pilot.css";
 
 const IncidentMap = dynamic(() => import("@/components/IncidentMap"), {
@@ -138,6 +139,7 @@ export default function PilotPage() {
   const [reportEvents, setReportEvents] = useState<ReportEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [activePage, setActivePage] = useState("Dashboard");
   const [showReportForm, setShowReportForm] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -294,8 +296,13 @@ export default function PilotPage() {
     setError("");
     setNotice("");
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") || "").trim();
+    const email = String(form.get("email") || "").trim().toLowerCase();
     const password = String(form.get("password") || "");
+    if (!email || !password) {
+      setError("Email dan kata sandi wajib diisi.");
+      setAuthLoading(false);
+      return;
+    }
     if (authMode === "signup") {
       const fullName = String(form.get("full_name") || "").trim();
       const requestedRole = String(form.get("requested_role") || "citizen");
@@ -321,16 +328,30 @@ export default function PilotPage() {
         email,
         password,
       });
-      if (signInError) setError(`Tidak dapat masuk: ${signInError.message}`);
+      if (signInError) {
+        const message =
+          signInError.message.toLowerCase().includes("email not confirmed")
+            ? "Email akun ini belum dikonfirmasi. Periksa inbox email atau konfirmasi akun di Supabase Auth."
+            : "Email atau kata sandi salah. Pastikan akun sudah dibuat dan emailnya sudah dikonfirmasi.";
+        setError(message);
+      }
     }
     setAuthLoading(false);
   }
 
   async function signOut() {
     if (!supabase) return;
+    setLogoutLoading(true);
+    const startedAt = Date.now();
     const { error: signOutError } = await supabase.auth.signOut();
-    if (signOutError) setError(`Gagal keluar: ${signOutError.message}`);
-    else setNotice("Anda telah keluar.");
+    const remaining = Math.max(0, 700 - (Date.now() - startedAt));
+    if (remaining) await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    if (signOutError) {
+      setError(`Gagal keluar: ${signOutError.message}`);
+    } else {
+      setNotice("Anda telah keluar.");
+    }
+    setLogoutLoading(false);
   }
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
@@ -433,8 +454,57 @@ export default function PilotPage() {
     setBusyReport(null);
   }
 
+  async function deleteReport(report: Report) {
+    if (!supabase || !session) return;
+    if (!window.confirm(`Hapus laporan ${report.report_code}? Data ini tidak dapat dipulihkan.`)) return;
+
+    setBusyReport(report.id);
+    setError("");
+    setNotice("");
+    const { data: deletedRows, error: deleteError } = await supabase
+      .from("reports")
+      .delete()
+      .eq("id", report.id)
+      .select("id");
+    if (deleteError) {
+      setError(`Laporan gagal dihapus: ${deleteError.message}`);
+      setBusyReport(null);
+      return;
+    }
+    if (!deletedRows || deletedRows.length === 0) {
+      setError(
+        "Laporan tidak terhapus. Hak akses database belum mengizinkan penghapusan laporan ini. Jalankan migrasi penghapusan di Supabase.",
+      );
+      setBusyReport(null);
+      return;
+    }
+
+    let cleanupMessage = "";
+    if (report.evidence_path) {
+      const cleanup = await supabase.storage
+        .from("report-evidence")
+        .remove([report.evidence_path]);
+      if (cleanup.error) {
+        cleanupMessage = ` Foto bukti tidak berhasil dibersihkan: ${cleanup.error.message}`;
+      }
+    }
+    setReports((currentReports) =>
+      currentReports.filter((currentReport) => currentReport.id !== report.id),
+    );
+    setReportEvents((currentEvents) =>
+      currentEvents.filter((event) => event.report_id !== report.id),
+    );
+    setMapReports((currentReports) =>
+      currentReports.filter((currentReport) => currentReport.id !== report.id),
+    );
+    await loadProfileAndReports(session.user.id);
+    setNotice(`Laporan ${report.report_code} berhasil dihapus.${cleanupMessage}`);
+    setBusyReport(null);
+  }
+
   if (!supabase) return <SetupRequired />;
-  if (loading && !session) return <div className="pilot-loading">Menyiapkan SiagaKita…</div>;
+  if (loading && !session) return <BrandSplash message="Menyiapkan SiagaKita…" />;
+  if (logoutLoading) return <BrandSplash message="Menutup sesi dengan aman…" />;
   if (!session) {
     return (
       <GuestExperience
@@ -459,7 +529,7 @@ export default function PilotPage() {
 
       <aside className={`pilot-sidebar ${mobileNavOpen ? "pilot-sidebar-open" : ""}`}>
         <a className="pilot-brand" href="#dashboard" onClick={() => setActivePage("Dashboard")}>
-          <span><ShieldCheck size={22} /></span>
+          <span><SiagaKitaLogo size={30} /></span>
           <strong>siaga<span>kita</span></strong>
           <button
             className="pilot-mobile-close"
@@ -548,6 +618,7 @@ export default function PilotPage() {
               reviewNotes={reviewNotes}
               setReviewNotes={setReviewNotes}
               onChangeStatus={changeReportStatus}
+              onDeleteReport={deleteReport}
               onCreateReport={() => setShowReportForm(true)}
             />
           )}
@@ -579,7 +650,7 @@ function SetupRequired() {
   return (
     <main className="setup-screen">
       <section className="setup-card">
-        <span className="setup-icon"><ShieldCheck size={25} /></span>
+        <span className="setup-icon"><SiagaKitaLogo size={42} /></span>
         <p className="pilot-kicker">SIAGAKITA ACEH · PILOT</p>
         <h1>Hubungkan backend pilot</h1>
         <p>Frontend pilot tidak akan menampilkan data contoh. Tambahkan kredensial publik Supabase agar akun, laporan, foto, dan peta memakai data bersama.</p>
@@ -591,6 +662,30 @@ function SetupRequired() {
         </ol>
         <p className="setup-warning">Jangan masukkan service-role key di variabel <code>NEXT_PUBLIC_*</code> atau membagikannya ke tester.</p>
       </section>
+    </main>
+  );
+}
+
+function BrandSplash({ message }: { message: string }) {
+  return (
+    <main className="brand-splash" role="status" aria-live="polite">
+      <div className="brand-splash-orbit brand-splash-orbit-one" />
+      <div className="brand-splash-orbit brand-splash-orbit-two" />
+      <div className="brand-splash-particles" aria-hidden="true">
+        <i /><i /><i /><i /><i /><i />
+      </div>
+      <div className="brand-splash-content">
+        <div className="brand-splash-logo">
+          <span className="brand-splash-ring brand-splash-ring-one" />
+          <span className="brand-splash-ring brand-splash-ring-two" />
+          <span className="brand-splash-scan" />
+          <SiagaKitaLogo size={94} animated />
+        </div>
+        <div className="brand-splash-name">siaga<span>kita</span></div>
+        <p className="brand-splash-status"><span className="brand-splash-status-dot" />{message}</p>
+        <span className="brand-splash-progress" aria-hidden="true"><i /></span>
+        <div className="brand-splash-loading-dots" aria-hidden="true"><i /><i /><i /></div>
+      </div>
     </main>
   );
 }
@@ -746,8 +841,10 @@ function AuthScreen({
 }) {
   const isSignup = mode === "signup";
   return (
+    <>
+      {busy && <BrandSplash message="Mengamankan akses Anda…" />}
       <section className="auth-card guest-auth-card">
-        <div className="auth-brand"><span><ShieldCheck size={24} /></span><strong>siaga<span>kita</span></strong></div>
+        <div className="auth-brand"><SiagaKitaLogo size={42} showWordmark /></div>
         <span className="pilot-live"><i /> PILOT TERBATAS · ACEH</span>
         <h1>{isSignup ? "Buat akun tester" : "Selamat datang kembali"}</h1>
         <p>{isSignup ? "Daftar untuk menguji pelaporan dan koordinasi SiagaKita." : "Masuk untuk melihat laporan bersama sesuai peran Anda."}</p>
@@ -766,6 +863,7 @@ function AuthScreen({
         </div>
         <div className="auth-disclaimer"><ShieldCheck size={15} /> Pendaftaran publik hanya memberi peran masyarakat atau relawan. Hak petugas diberikan oleh administrator.</div>
       </section>
+    </>
   );
 }
 
@@ -889,6 +987,7 @@ function ReportsPage({
   reviewNotes,
   setReviewNotes,
   onChangeStatus,
+  onDeleteReport,
   onCreateReport,
 }: {
   reports: Report[];
@@ -900,6 +999,7 @@ function ReportsPage({
   reviewNotes: Record<string, string>;
   setReviewNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onChangeStatus: (report: Report, nextStatus: ReportStatus) => void;
+  onDeleteReport: (report: Report) => void;
   onCreateReport: () => void;
 }) {
   return (
@@ -921,6 +1021,7 @@ function ReportsPage({
             note={reviewNotes[report.id] ?? ""}
             setNote={(value) => setReviewNotes((previous) => ({ ...previous, [report.id]: value }))}
             onChangeStatus={(next) => onChangeStatus(report, next)}
+            onDelete={() => onDeleteReport(report)}
           />
         ))}
       </section>
@@ -937,6 +1038,7 @@ function ReportCard({
   note,
   setNote,
   onChangeStatus,
+  onDelete,
 }: {
   report: Report;
   events: ReportEvent[];
@@ -946,6 +1048,7 @@ function ReportCard({
   note: string;
   setNote: (value: string) => void;
   onChangeStatus: (status: ReportStatus) => void;
+  onDelete: () => void;
 }) {
   const status = report.status as ReportStatus;
   return (
@@ -984,6 +1087,11 @@ function ReportCard({
       )}
       {!isStaff && isOwner && status === "pending" && <span className="review-hint">Laporan Anda bersifat privat sampai petugas memverifikasinya.</span>}
       {isOwner && status === "rejected" && <span className="review-hint">Laporan ini ditolak oleh petugas. Silakan hubungi koordinator pilot bila perlu klarifikasi.</span>}
+      {(isOwner || isStaff) && (
+        <button type="button" disabled={busy} className="reject-button" onClick={onDelete}>
+          {busy ? "Menghapus…" : "Hapus laporan"}
+        </button>
+      )}
     </article>
   );
 }

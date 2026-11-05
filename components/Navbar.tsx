@@ -9,10 +9,10 @@ import {
   User, 
   LogOut, 
   LogIn, 
-  ShieldAlert, 
   Menu, 
   X
 } from 'lucide-react';
+import SiagaKitaLogo from '@/components/SiagaKitaLogo';
 
 interface NavbarProps {
   userRole?: 'guest' | 'citizen' | 'volunteer' | 'officer' | 'admin';
@@ -47,9 +47,7 @@ export default function Navbar({ userRole = 'guest', userEmail, onLogout }: Navb
             {/* Logo & Identitas Brand */}
             <div className="flex items-center space-x-3">
               <Link href="/" className="flex items-center space-x-2 group">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl shadow-md group-hover:scale-105 transition-transform duration-200">
-                  <ShieldAlert className="w-6 h-6 text-white" />
-                </div>
+                <SiagaKitaLogo size={40} />
                 <div>
                   <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent">
                     SiagaKita <span className="text-emerald-400 font-black">ACEH</span>

@@ -126,7 +126,17 @@ export default function ReportModal({
         </div>
 
         {/* FORM BODY */}
-        <form onSubmit={onSubmit} className="p-6 space-y-5">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (step !== 3) return;
+            onSubmit(event);
+          }}
+          className="p-6 space-y-5"
+        >
+          <input type="hidden" name="incident_type" value={selectedType} />
+          <input type="hidden" name="district" value={district} />
+          <input type="hidden" name="locality" value={locality} />
 
           {/* STEP 1: JENIS & WILAYAH */}
           {step === 1 && (
@@ -150,7 +160,6 @@ export default function ReportModal({
                     </button>
                   ))}
                 </div>
-                <input type="hidden" name="incident_type" value={selectedType} required />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">

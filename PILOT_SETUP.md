@@ -47,6 +47,11 @@ RLS, fungsi transisi status, serta bucket foto privat.
 
 Jangan menonaktifkan RLS dan jangan membuat bucket bukti foto publik.
 
+Jika database pilot sudah dibuat sebelumnya, jalankan juga migrasi
+[`supabase/migrations/202610310001_add_report_deletion.sql`](./supabase/migrations/202610310001_add_report_deletion.sql)
+di SQL Editor. Migrasi ini memberikan hak hapus yang dibatasi hanya untuk
+pemilik laporan dan petugas.
+
 ## 3. Buat akun petugas/admin untuk tester
 
 1. Jalankan aplikasi dan daftarkan semua tester lewat halaman pendaftaran.
