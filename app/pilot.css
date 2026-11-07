@@ -89,6 +89,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .pilot-shell, .guest-shell { background: #f4f7f5; }
 .pilot-sidebar { border-color: #e3ebe6; background: #fff; box-shadow: 8px 0 28px #163a2b08; }
 .pilot-brand > span:first-child, .auth-brand > span { background: #e4f2eb; color: #147b5b; }
+.auth-brand > .siagakita-logo { width: auto; height: auto; background: transparent; color: inherit; }
+.auth-brand .siagakita-logo-svg { flex: 0 0 auto; }
+.siagakita-wordmark { color: #102a43; font: 800 24px "Manrope", sans-serif; letter-spacing: -1.3px; white-space: nowrap; }
+.siagakita-wordmark span { color: #35bd8e; }
 .pilot-brand strong span, .auth-brand strong span { color: #147b5b; }
 .pilot-workspace { margin-top: 30px; border-color: #e5ede8; border-radius: 12px; background: linear-gradient(145deg, #fbfdfb, #f5f9f6); padding: 13px; }
 .pilot-workspace small, .pilot-nav-label { font-size: 10px; }

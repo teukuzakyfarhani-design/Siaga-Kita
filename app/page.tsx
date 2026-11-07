@@ -887,9 +887,9 @@ function AuthScreen({
     <>
       {busy && <BrandSplash message="Mengamankan akses Anda…" />}
       <section className="auth-card guest-auth-card">
-        <div className="auth-brand"><SiagaKitaLogo size={42} showWordmark /></div>
+        <div className="auth-brand"><SiagaKitaLogo size={48} showWordmark /></div>
         <span className="pilot-live"><i /> PILOT TERBATAS · ACEH</span>
-        <h1>{isSignup ? "Buat akun tester" : "Selamat datang kembali"}</h1>
+        <h1>{isSignup ? "Buat akun" : "Selamat datang kembali"}</h1>
         <p>{isSignup ? "Buat akun baru untuk memakai fitur pelaporan SiagaKita." : "Masuk untuk melihat laporan bersama sesuai peran Anda."}</p>
         {error && <div className="auth-message auth-error" role="alert">{error}</div>}
         {notice && <div className="auth-message auth-notice" role="status">{notice}</div>}
