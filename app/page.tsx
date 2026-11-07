@@ -150,9 +150,12 @@ export default function PilotPage() {
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [busyReport, setBusyReport] = useState<string | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<File | null>(null);
+  const [evidencePath, setEvidencePath] = useState<string | null>(null);
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
   const activeUserId = useRef<string | null>(null);
   const reportLoadRequest = useRef(0);
   const reportSubmissionInFlight = useRef(false);
+  const evidenceUploadRequest = useRef(0);
 
   const isStaff = profile?.role === "admin" || profile?.role === "officer";
   const loadProfileAndReports = useCallback(
@@ -356,6 +359,44 @@ export default function PilotPage() {
     setLogoutLoading(false);
   }
 
+  async function handleEvidenceChange(file: File | null) {
+    const requestId = ++evidenceUploadRequest.current;
+    const previousPath = evidencePath;
+    setSelectedEvidence(file);
+    setEvidencePath(null);
+    if (previousPath && supabase) {
+      await supabase.storage.from("report-evidence").remove([previousPath]);
+    }
+    if (!file) return;
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      setError("Bukti harus berupa JPG, PNG, atau WebP dengan ukuran maksimal 5 MB.");
+      return;
+    }
+    if (!supabase || !session) return;
+
+    setEvidenceUploading(true);
+    setError("");
+    const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+    const nextPath = `${session.user.id}/${crypto.randomUUID()}.${extension}`;
+    const upload = await supabase.storage
+      .from("report-evidence")
+      .upload(nextPath, file, { contentType: file.type, upsert: false });
+    if (requestId !== evidenceUploadRequest.current) {
+      await supabase.storage.from("report-evidence").remove([nextPath]);
+      return;
+    }
+    if (upload.error) {
+      setError(`Bukti foto gagal diunggah: ${upload.error.message}`);
+    } else {
+      setEvidencePath(nextPath);
+      setNotice("Foto berhasil diunggah. Anda dapat mengirim laporan.");
+    }
+    setEvidenceUploading(false);
+  }
+
   async function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (reportSubmissionInFlight.current) return;
@@ -389,22 +430,11 @@ export default function PilotPage() {
         return;
       }
 
-      let evidencePath: string | null = null;
-      if (evidence) {
-        setNotice("Mengunggah foto bukti…");
-        const extension = evidence.type === "image/jpeg" ? "jpg" : evidence.type.split("/")[1];
-        evidencePath = `${session.user.id}/${crypto.randomUUID()}.${extension}`;
-        const upload = await supabase.storage
-          .from("report-evidence")
-          .upload(evidencePath, evidence, { contentType: evidence.type, upsert: false });
-        if (upload.error) {
-          setError(`Bukti foto gagal diunggah: ${upload.error.message}`);
-          return;
-        }
-        setNotice("Foto berhasil diunggah. Menyimpan laporan…");
-      } else {
-        setNotice("Menyimpan laporan…");
+      if (evidenceUploading || (evidence && !evidencePath)) {
+        setError("Tunggu sampai upload foto selesai sebelum mengirim laporan.");
+        return;
       }
+      setNotice("Menyimpan laporan…");
 
       const insertResult = await supabase
         .from("reports")
@@ -435,6 +465,7 @@ export default function PilotPage() {
       await loadProfileAndReports(session.user.id);
       form.reset();
       setSelectedEvidence(null);
+      setEvidencePath(null);
       setSelectedPoint(null);
       setShowReportForm(false);
       setActivePage("Laporan");
@@ -645,12 +676,13 @@ export default function PilotPage() {
         isOpen={showReportForm}
         onClose={() => setShowReportForm(false)}
         onSubmit={submitReport}
-        onEvidenceChange={setSelectedEvidence}
+        onEvidenceChange={handleEvidenceChange}
         selectedPoint={selectedPoint}
         setSelectedPoint={setSelectedPoint}
         reportTypes={reportTypes}
         acehDistricts={acehDistricts}
-        busy={busyReport === "new"}
+        busy={busyReport === "new" || evidenceUploading}
+        evidenceUploading={evidenceUploading}
       />
     </main>
   );

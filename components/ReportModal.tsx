@@ -23,12 +23,13 @@ interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onEvidenceChange: (file: File | null) => void;
+  onEvidenceChange: (file: File | null) => void | Promise<void>;
   selectedPoint: [number, number] | null;
   setSelectedPoint: (point: [number, number] | null) => void;
   reportTypes: string[];
   acehDistricts: string[];
   busy: boolean;
+  evidenceUploading: boolean;
 }
 
 export default function ReportModal({
@@ -40,7 +41,8 @@ export default function ReportModal({
   setSelectedPoint,
   reportTypes,
   acehDistricts,
-  busy
+  busy,
+  evidenceUploading
 }: ReportModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<string>('');
@@ -245,7 +247,9 @@ export default function ReportModal({
                 <div className="flex items-center space-x-4">
                   <label className="flex-1 cursor-pointer bg-slate-800/60 hover:bg-slate-800 border border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-4 text-center transition group">
                     <Camera className="w-6 h-6 text-slate-400 group-hover:text-emerald-400 mx-auto mb-1" />
-                    <span className="text-xs text-slate-300 group-hover:text-white font-medium block">Klik untuk memilih foto</span>
+                    <span className="text-xs text-slate-300 group-hover:text-white font-medium block">
+                      {evidenceUploading ? 'Mengunggah foto…' : 'Klik untuk memilih foto'}
+                    </span>
                     <input 
                       type="file" 
                       name="evidence" 
@@ -309,7 +313,7 @@ export default function ReportModal({
                 disabled={busy}
                 className="px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-emerald-600/20"
               >
-                {busy ? <span>Mengirim...</span> : (
+                {evidenceUploading ? <span>Menunggu upload foto...</span> : busy ? <span>Mengirim...</span> : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Kirim Laporan Sekarang</span>
