@@ -397,7 +397,12 @@ export default function PilotPage() {
     setEvidenceUploading(false);
   }
 
-  async function submitReport(form: HTMLFormElement) {
+  async function submitReport(draft: {
+    incidentType: string;
+    district: string;
+    locality: string;
+    description: string;
+  }) {
     if (reportSubmissionInFlight.current) return;
     reportSubmissionInFlight.current = true;
 
@@ -409,11 +414,10 @@ export default function PilotPage() {
       setBusyReport("new");
       setError("");
       setNotice("");
-      const data = new FormData(form);
-      const type = String(data.get("incident_type") || "");
-      const district = String(data.get("district") || "");
-      const locality = String(data.get("locality") || "").trim();
-      const description = String(data.get("description") || "").trim();
+      const type = draft.incidentType;
+      const district = draft.district;
+      const locality = draft.locality.trim();
+      const description = draft.description.trim();
       const evidence = selectedEvidence && selectedEvidence.size > 0 ? selectedEvidence : null;
       if (!type || !district || !locality) {
         setError("Lengkapi jenis kejadian, kabupaten/kota, dan area umum.");
@@ -461,7 +465,6 @@ export default function PilotPage() {
       }
 
       await loadProfileAndReports(session.user.id);
-      form.reset();
       setSelectedEvidence(null);
       setEvidencePath(null);
       setSelectedPoint(null);

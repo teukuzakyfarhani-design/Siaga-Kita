@@ -22,7 +22,12 @@ const IncidentMap = dynamic(() => import('@/components/IncidentMap'), {
 interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (form: HTMLFormElement) => void;
+  onSubmit: (draft: {
+    incidentType: string;
+    district: string;
+    locality: string;
+    description: string;
+  }) => void;
   onEvidenceChange: (file: File | null) => void | Promise<void>;
   selectedPoint: [number, number] | null;
   setSelectedPoint: (point: [number, number] | null) => void;
@@ -48,6 +53,7 @@ export default function ReportModal({
   const [selectedType, setSelectedType] = useState<string>('');
   const [district, setDistrict] = useState<string>('');
   const [locality, setLocality] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,6 +64,7 @@ export default function ReportModal({
     setSelectedType('');
     setDistrict('');
     setLocality('');
+    setDescription('');
     setPreviewImage(null);
     setSelectedPoint(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -132,10 +139,7 @@ export default function ReportModal({
         </div>
 
         {/* FORM BODY */}
-        <form className="p-6 space-y-5" onSubmit={(event) => event.preventDefault()}>
-          <input type="hidden" name="incident_type" value={selectedType} />
-          <input type="hidden" name="district" value={district} />
-          <input type="hidden" name="locality" value={locality} />
+        <div className="p-6 space-y-5">
 
           {/* STEP 1: JENIS & WILAYAH */}
           {step === 1 && (
@@ -224,9 +228,10 @@ export default function ReportModal({
                   Keterangan Kejadian <span className="text-slate-500 font-normal">(Opsional)</span>
                 </label>
                 <textarea 
-                  name="description" 
                   rows={3} 
                   maxLength={1000} 
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
                   placeholder="Jelaskan kondisi saat ini (misal: ketinggian air 1 meter, akses jalan terputus). Hindari menyebutkan data pribadi korban." 
                   className="w-full bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                 />
@@ -307,8 +312,12 @@ export default function ReportModal({
                 type="button"
                 disabled={busy}
                 onClick={(event) => {
-                  const form = event.currentTarget.form;
-                  if (form) onSubmit(form);
+                  onSubmit({
+                    incidentType: selectedType,
+                    district,
+                    locality,
+                    description,
+                  });
                 }}
                 className="px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-emerald-600/20"
               >
@@ -322,7 +331,7 @@ export default function ReportModal({
             )}
           </div>
 
-        </form>
+        </div>
       </div>
     </div>
   );
