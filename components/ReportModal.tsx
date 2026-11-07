@@ -23,6 +23,7 @@ interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onEvidenceChange: (file: File | null) => void;
   selectedPoint: [number, number] | null;
   setSelectedPoint: (point: [number, number] | null) => void;
   reportTypes: string[];
@@ -34,6 +35,7 @@ export default function ReportModal({
   isOpen,
   onClose,
   onSubmit,
+  onEvidenceChange,
   selectedPoint,
   setSelectedPoint,
   reportTypes,
@@ -69,6 +71,7 @@ export default function ReportModal({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    onEvidenceChange(file ?? null);
     if (file) {
       if (previewImage) URL.revokeObjectURL(previewImage);
       setPreviewImage(URL.createObjectURL(file));
@@ -76,6 +79,7 @@ export default function ReportModal({
   };
 
   const clearSelectedFile = () => {
+    onEvidenceChange(null);
     setPreviewImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };

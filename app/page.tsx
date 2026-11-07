@@ -149,6 +149,7 @@ export default function PilotPage() {
   const [selectedPoint, setSelectedPoint] = useState<[number, number] | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [busyReport, setBusyReport] = useState<string | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<File | null>(null);
   const activeUserId = useRef<string | null>(null);
   const reportLoadRequest = useRef(0);
   const reportSubmissionInFlight = useRef(false);
@@ -374,8 +375,7 @@ export default function PilotPage() {
       const district = String(data.get("district") || "");
       const locality = String(data.get("locality") || "").trim();
       const description = String(data.get("description") || "").trim();
-      const file = data.get("evidence");
-      const evidence = file instanceof File && file.size > 0 ? file : null;
+      const evidence = selectedEvidence && selectedEvidence.size > 0 ? selectedEvidence : null;
       if (!type || !district || !locality) {
         setError("Lengkapi jenis kejadian, kabupaten/kota, dan area umum.");
         return;
@@ -391,6 +391,7 @@ export default function PilotPage() {
 
       let evidencePath: string | null = null;
       if (evidence) {
+        setNotice("Mengunggah foto bukti…");
         const extension = evidence.type === "image/jpeg" ? "jpg" : evidence.type.split("/")[1];
         evidencePath = `${session.user.id}/${crypto.randomUUID()}.${extension}`;
         const upload = await supabase.storage
@@ -400,6 +401,9 @@ export default function PilotPage() {
           setError(`Bukti foto gagal diunggah: ${upload.error.message}`);
           return;
         }
+        setNotice("Foto berhasil diunggah. Menyimpan laporan…");
+      } else {
+        setNotice("Menyimpan laporan…");
       }
 
       const insertResult = await supabase
@@ -430,6 +434,7 @@ export default function PilotPage() {
 
       await loadProfileAndReports(session.user.id);
       form.reset();
+      setSelectedEvidence(null);
       setSelectedPoint(null);
       setShowReportForm(false);
       setActivePage("Laporan");
@@ -640,6 +645,7 @@ export default function PilotPage() {
         isOpen={showReportForm}
         onClose={() => setShowReportForm(false)}
         onSubmit={submitReport}
+        onEvidenceChange={setSelectedEvidence}
         selectedPoint={selectedPoint}
         setSelectedPoint={setSelectedPoint}
         reportTypes={reportTypes}
