@@ -151,6 +151,7 @@ export default function PilotPage() {
   const [busyReport, setBusyReport] = useState<string | null>(null);
   const activeUserId = useRef<string | null>(null);
   const reportLoadRequest = useRef(0);
+  const reportSubmissionInFlight = useRef(false);
 
   const isStaff = profile?.role === "admin" || profile?.role === "officer";
   const loadProfileAndReports = useCallback(
@@ -356,84 +357,87 @@ export default function PilotPage() {
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !session || !selectedPoint) {
-      setError("Pilih titik lokasi kejadian pada peta sebelum mengirim laporan.");
-      return;
-    }
-    setBusyReport("new");
-    setError("");
-    setNotice("");
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const type = String(data.get("incident_type") || "");
-    const district = String(data.get("district") || "");
-    const locality = String(data.get("locality") || "").trim();
-    const description = String(data.get("description") || "").trim();
-    const file = data.get("evidence");
-    const evidence = file instanceof File && file.size > 0 ? file : null;
-    if (!type || !district || !locality) {
-      setError("Lengkapi jenis kejadian, kabupaten/kota, dan area umum.");
-      setBusyReport(null);
-      return;
-    }
-    if (
-      evidence &&
-      (!["image/jpeg", "image/png", "image/webp"].includes(evidence.type) ||
-        evidence.size > 5 * 1024 * 1024)
-    ) {
-      setError("Bukti harus berupa JPG, PNG, atau WebP dengan ukuran maksimal 5 MB.");
-      setBusyReport(null);
-      return;
-    }
+    if (reportSubmissionInFlight.current) return;
+    reportSubmissionInFlight.current = true;
 
-    let evidencePath: string | null = null;
-    if (evidence) {
-      const extension = evidence.type === "image/jpeg" ? "jpg" : evidence.type.split("/")[1];
-      evidencePath = `${session.user.id}/${crypto.randomUUID()}.${extension}`;
-      const upload = await supabase.storage
-        .from("report-evidence")
-        .upload(evidencePath, evidence, { contentType: evidence.type, upsert: false });
-      if (upload.error) {
-        setError(`Bukti foto gagal diunggah: ${upload.error.message}`);
-        setBusyReport(null);
+    try {
+      if (!supabase || !session || !selectedPoint) {
+        setError("Pilih titik lokasi kejadian pada peta sebelum mengirim laporan.");
         return;
       }
-    }
-
-    const insertResult = await supabase
-      .from("reports")
-      .insert({
-        reporter_id: session.user.id,
-        incident_type: type,
-        district,
-        locality,
-        description,
-        latitude: selectedPoint[0],
-        longitude: selectedPoint[1],
-        evidence_path: evidencePath,
-        status: "pending",
-      })
-      .select("id")
-      .single();
-
-    if (insertResult.error) {
-      let cleanupMessage = "";
-      if (evidencePath) {
-        const cleanup = await supabase.storage.from("report-evidence").remove([evidencePath]);
-        if (cleanup.error) cleanupMessage = ` Pembersihan file sementara juga gagal: ${cleanup.error.message}`;
+      setBusyReport("new");
+      setError("");
+      setNotice("");
+      const form = event.currentTarget;
+      const data = new FormData(form);
+      const type = String(data.get("incident_type") || "");
+      const district = String(data.get("district") || "");
+      const locality = String(data.get("locality") || "").trim();
+      const description = String(data.get("description") || "").trim();
+      const file = data.get("evidence");
+      const evidence = file instanceof File && file.size > 0 ? file : null;
+      if (!type || !district || !locality) {
+        setError("Lengkapi jenis kejadian, kabupaten/kota, dan area umum.");
+        return;
       }
-      setError(`Laporan gagal disimpan: ${insertResult.error.message}.${cleanupMessage}`);
-      setBusyReport(null);
-      return;
-    }
+      if (
+        evidence &&
+        (!["image/jpeg", "image/png", "image/webp"].includes(evidence.type) ||
+          evidence.size > 5 * 1024 * 1024)
+      ) {
+        setError("Bukti harus berupa JPG, PNG, atau WebP dengan ukuran maksimal 5 MB.");
+        return;
+      }
 
-    await loadProfileAndReports(session.user.id);
-    form.reset();
-    setSelectedPoint(null);
-    setShowReportForm(false);
-    setActivePage("Laporan");
-    setNotice("Laporan tersimpan dan menunggu verifikasi petugas.");
-    setBusyReport(null);
+      let evidencePath: string | null = null;
+      if (evidence) {
+        const extension = evidence.type === "image/jpeg" ? "jpg" : evidence.type.split("/")[1];
+        evidencePath = `${session.user.id}/${crypto.randomUUID()}.${extension}`;
+        const upload = await supabase.storage
+          .from("report-evidence")
+          .upload(evidencePath, evidence, { contentType: evidence.type, upsert: false });
+        if (upload.error) {
+          setError(`Bukti foto gagal diunggah: ${upload.error.message}`);
+          return;
+        }
+      }
+
+      const insertResult = await supabase
+        .from("reports")
+        .insert({
+          reporter_id: session.user.id,
+          incident_type: type,
+          district,
+          locality,
+          description,
+          latitude: selectedPoint[0],
+          longitude: selectedPoint[1],
+          evidence_path: evidencePath,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+
+      if (insertResult.error) {
+        let cleanupMessage = "";
+        if (evidencePath) {
+          const cleanup = await supabase.storage.from("report-evidence").remove([evidencePath]);
+          if (cleanup.error) cleanupMessage = ` Pembersihan file sementara juga gagal: ${cleanup.error.message}`;
+        }
+        setError(`Laporan gagal disimpan: ${insertResult.error.message}.${cleanupMessage}`);
+        return;
+      }
+
+      await loadProfileAndReports(session.user.id);
+      form.reset();
+      setSelectedPoint(null);
+      setShowReportForm(false);
+      setActivePage("Laporan");
+      setNotice("Laporan tersimpan dan menunggu verifikasi petugas.");
+    } finally {
+      reportSubmissionInFlight.current = false;
+      setBusyReport(null);
+    }
   }
   async function changeReportStatus(report: Report, nextStatus: ReportStatus) {
     if (!supabase) return;
