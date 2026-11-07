@@ -52,8 +52,11 @@ export default function ReportModal({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<string>('');
   const [district, setDistrict] = useState<string>('');
+  const [districtQuery, setDistrictQuery] = useState<string>('');
   const [locality, setLocality] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMessage, setGeocodeMessage] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,8 +66,10 @@ export default function ReportModal({
     setStep(1);
     setSelectedType('');
     setDistrict('');
+    setDistrictQuery('');
     setLocality('');
     setDescription('');
+    setGeocodeMessage('');
     setPreviewImage(null);
     setSelectedPoint(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -95,6 +100,35 @@ export default function ReportModal({
 
   const isStep1Valid = selectedType !== '' && district !== '' && locality.trim() !== '';
   const isStep2Valid = selectedPoint !== null;
+  const filteredDistricts = acehDistricts.filter((item) =>
+    item.toLowerCase().includes(districtQuery.toLowerCase()),
+  );
+
+  const findLocality = async () => {
+    if (!isStep1Valid) return;
+    setGeocoding(true);
+    setGeocodeMessage('');
+    try {
+      const query = encodeURIComponent(`${locality.trim()}, ${district}, Aceh, Indonesia`);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${query}`,
+      );
+      if (!response.ok) throw new Error('Layanan pencarian lokasi tidak tersedia.');
+      const results = (await response.json()) as Array<{ lat: string; lon: string }>;
+      const firstResult = results[0];
+      if (!firstResult) {
+        setGeocodeMessage('Lokasi belum ditemukan. Silakan pilih titik secara manual di peta.');
+      } else {
+        setSelectedPoint([Number(firstResult.lat), Number(firstResult.lon)]);
+        setGeocodeMessage('Lokasi otomatis ditemukan. Anda masih dapat menggeser titik di peta.');
+      }
+    } catch (error) {
+      setGeocodeMessage(error instanceof Error ? error.message : 'Lokasi otomatis gagal dicari.');
+    } finally {
+      setGeocoding(false);
+      setStep(2);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
@@ -168,16 +202,36 @@ export default function ReportModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">Kabupaten / Kota <span className="text-rose-400">*</span></label>
-                  <select 
-                    name="district" 
-                    value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
-                    required 
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="" disabled>Pilih Kabupaten/Kota</option>
-                    {acehDistricts.map((d) => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
-                  </select>
+                  <div className="relative">
+                    <input
+                      value={districtQuery}
+                      onChange={(event) => {
+                        setDistrictQuery(event.target.value);
+                        setDistrict('');
+                      }}
+                      onFocus={() => setDistrictQuery(district)}
+                      placeholder="Ketik untuk mencari kabupaten/kota"
+                      required={!district}
+                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                    {districtQuery && !district && (
+                      <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-700 bg-slate-900 p-1 shadow-xl">
+                        {filteredDistricts.length > 0 ? filteredDistricts.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => {
+                              setDistrict(item);
+                              setDistrictQuery(item);
+                            }}
+                            className="block w-full rounded-lg px-3 py-2 text-left text-xs text-slate-300 hover:bg-slate-800 hover:text-white"
+                          >
+                            {item}
+                          </button>
+                        )) : <p className="px-3 py-2 text-xs text-slate-500">Kabupaten/kota tidak ditemukan.</p>}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -208,6 +262,11 @@ export default function ReportModal({
                   {selectedPoint ? `${selectedPoint[0].toFixed(4)}, ${selectedPoint[1].toFixed(4)}` : 'Belum dipilih'}
                 </span>
               </div>
+              {geocodeMessage && (
+                <p className="rounded-lg border border-emerald-800/40 bg-emerald-950/30 px-3 py-2 text-[11px] text-emerald-200">
+                  {geocodeMessage}
+                </p>
+              )}
 
               <div className="h-60 rounded-xl overflow-hidden border border-slate-800 relative">
                 <IncidentMap 
@@ -299,11 +358,14 @@ export default function ReportModal({
             {step < 3 ? (
               <button
                 type="button"
-                onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)}
-                disabled={(step === 1 && !isStep1Valid) || (step === 2 && !isStep2Valid)}
+                onClick={() => {
+                  if (step === 1) void findLocality();
+                  else setStep(3);
+                }}
+                disabled={(step === 1 && (!isStep1Valid || geocoding)) || (step === 2 && !isStep2Valid)}
                 className="px-5 py-2.5 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition flex items-center space-x-1 font-bold shadow-lg shadow-emerald-500/10"
               >
-                <span>Lanjut</span>
+                <span>{step === 1 && geocoding ? 'Mencari lokasi…' : 'Lanjut'}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             ) : (

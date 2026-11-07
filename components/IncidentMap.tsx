@@ -54,6 +54,16 @@ function MapSizeFixer() {
   return null;
 }
 
+function MapViewportSync({ location }: { location?: [number, number] | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (location) map.setView(location, 13, { animate: true });
+  }, [location, map]);
+
+  return null;
+}
+
 export default function IncidentMap({ reports, selectedLocation, onSelect, canPick }: IncidentMapProps) {
   // Titik tengah default Provinsi Aceh (Banda Aceh / Koordinat tengah wilayah Aceh)
   const defaultCenter: [number, number] = [4.6951, 96.7494];
@@ -66,6 +76,7 @@ export default function IncidentMap({ reports, selectedLocation, onSelect, canPi
       className={`live-map ${canPick ? 'live-map-pickable' : ''}`}
     >
       <MapSizeFixer />
+      <MapViewportSync location={selectedLocation} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
