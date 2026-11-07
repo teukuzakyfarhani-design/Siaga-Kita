@@ -135,7 +135,10 @@ export default function ReportModal({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (step !== 3) return;
+            const submitter = (event.nativeEvent as SubmitEvent).submitter;
+            if (step !== 3 || !(submitter instanceof HTMLButtonElement) || submitter.name !== 'submit-report') {
+              return;
+            }
             onSubmit(event);
           }}
           className="p-6 space-y-5"
@@ -256,6 +259,7 @@ export default function ReportModal({
                       accept="image/jpeg,image/png,image/webp" 
                       ref={fileInputRef}
                       onChange={handleFileChange}
+                      onClick={(event) => event.stopPropagation()}
                       className="hidden" 
                     />
                   </label>
@@ -309,6 +313,7 @@ export default function ReportModal({
               </button>
             ) : (
               <button
+                name="submit-report"
                 type="submit"
                 disabled={busy}
                 className="px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-emerald-600/20"
