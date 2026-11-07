@@ -22,7 +22,7 @@ const IncidentMap = dynamic(() => import('@/components/IncidentMap'), {
 interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (form: HTMLFormElement) => void;
   onEvidenceChange: (file: File | null) => void | Promise<void>;
   selectedPoint: [number, number] | null;
   setSelectedPoint: (point: [number, number] | null) => void;
@@ -132,17 +132,7 @@ export default function ReportModal({
         </div>
 
         {/* FORM BODY */}
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const submitter = (event.nativeEvent as SubmitEvent).submitter;
-            if (step !== 3 || !(submitter instanceof HTMLButtonElement) || submitter.name !== 'submit-report') {
-              return;
-            }
-            onSubmit(event);
-          }}
-          className="p-6 space-y-5"
-        >
+        <form className="p-6 space-y-5" onSubmit={(event) => event.preventDefault()}>
           <input type="hidden" name="incident_type" value={selectedType} />
           <input type="hidden" name="district" value={district} />
           <input type="hidden" name="locality" value={locality} />
@@ -314,8 +304,12 @@ export default function ReportModal({
             ) : (
               <button
                 name="submit-report"
-                type="submit"
+                type="button"
                 disabled={busy}
+                onClick={(event) => {
+                  const form = event.currentTarget.form;
+                  if (form) onSubmit(form);
+                }}
                 className="px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-emerald-600/20"
               >
                 {evidenceUploading ? <span>Menunggu upload foto...</span> : busy ? <span>Mengirim...</span> : (

@@ -397,8 +397,7 @@ export default function PilotPage() {
     setEvidenceUploading(false);
   }
 
-  async function submitReport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitReport(form: HTMLFormElement) {
     if (reportSubmissionInFlight.current) return;
     reportSubmissionInFlight.current = true;
 
@@ -410,7 +409,6 @@ export default function PilotPage() {
       setBusyReport("new");
       setError("");
       setNotice("");
-      const form = event.currentTarget;
       const data = new FormData(form);
       const type = String(data.get("incident_type") || "");
       const district = String(data.get("district") || "");
