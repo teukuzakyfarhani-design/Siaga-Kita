@@ -38,6 +38,12 @@ bukan sumber resmi atau instruksi evakuasi.
 
 4. Pastikan `.env.local` tidak dibagikan atau dikomit.
 
+Di Supabase, buka **Authentication → Providers → Email** dan pastikan
+**Allow new users to sign up** aktif. Jika pengguna baru harus langsung dapat
+masuk tanpa mengeklik tautan email, nonaktifkan **Confirm email** untuk pilot
+terbatas. Jika tetap aktif, pengguna harus mengonfirmasi email terlebih dahulu;
+aplikasi tidak dapat melewati verifikasi tersebut dengan aman.
+
 ## 2. Buat tabel, aturan akses, dan bucket foto
 
 Di **SQL Editor** Supabase, jalankan isi file

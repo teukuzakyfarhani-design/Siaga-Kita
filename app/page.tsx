@@ -890,7 +890,7 @@ function AuthScreen({
         <div className="auth-brand"><SiagaKitaLogo size={42} showWordmark /></div>
         <span className="pilot-live"><i /> PILOT TERBATAS · ACEH</span>
         <h1>{isSignup ? "Buat akun tester" : "Selamat datang kembali"}</h1>
-        <p>{isSignup ? "Daftar untuk menguji pelaporan dan koordinasi SiagaKita." : "Masuk untuk melihat laporan bersama sesuai peran Anda."}</p>
+        <p>{isSignup ? "Buat akun baru untuk memakai fitur pelaporan SiagaKita." : "Masuk untuk melihat laporan bersama sesuai peran Anda."}</p>
         {error && <div className="auth-message auth-error" role="alert">{error}</div>}
         {notice && <div className="auth-message auth-notice" role="status">{notice}</div>}
         <form onSubmit={onSubmit}>
@@ -902,7 +902,7 @@ function AuthScreen({
         </form>
         <div className="auth-switch">
           {isSignup ? "Sudah punya akun?" : "Belum memiliki akun?"}
-          <button onClick={() => setMode(isSignup ? "signin" : "signup")}>{isSignup ? "Masuk" : "Daftar tester"}</button>
+          <button onClick={() => setMode(isSignup ? "signin" : "signup")}>{isSignup ? "Kembali ke masuk" : "Buat akun baru"}</button>
         </div>
         <div className="auth-disclaimer"><ShieldCheck size={15} /> Pendaftaran publik hanya memberi peran masyarakat atau relawan. Hak petugas diberikan oleh administrator.</div>
       </section>
