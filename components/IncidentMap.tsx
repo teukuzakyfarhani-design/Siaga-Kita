@@ -1,8 +1,22 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import React, { useEffect, useState } from 'react';
+import { LayerGroup, LayersControl, MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { getSupabaseClient } from '@/lib/supabase';
+
+export type ReliefSite = {
+  id: string;
+  name: string;
+  district: string;
+  locality: string;
+  latitude: number;
+  longitude: number;
+  public_kitchen: boolean;
+  clean_water_liters: number;
+  food_portions: number;
+  medicine_kits: number;
+};
 
 // Konfigurasi ikon kustom agar marker tidak error di Next.js
 const defaultIcon = L.icon({
@@ -12,6 +26,14 @@ const defaultIcon = L.icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
+});
+
+const reliefSiteIcon = L.divIcon({
+  className: 'relief-site-marker',
+  html: '<span aria-hidden="true">+</span>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -13],
 });
 
 export type MapReport = {
@@ -67,6 +89,43 @@ function MapViewportSync({ location }: { location?: [number, number] | null }) {
 export default function IncidentMap({ reports, selectedLocation, onSelect, canPick }: IncidentMapProps) {
   // Titik tengah default Provinsi Aceh (Banda Aceh / Koordinat tengah wilayah Aceh)
   const defaultCenter: [number, number] = [4.6951, 96.7494];
+  const supabase = getSupabaseClient();
+  const [reliefSites, setReliefSites] = useState<ReliefSite[]>([]);
+  const [reliefSiteError, setReliefSiteError] = useState('');
+
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    const loadReliefSites = async () => {
+      const { data, error } = await supabase
+        .from('relief_sites')
+        .select('id, name, district, locality, latitude, longitude, public_kitchen, clean_water_liters, food_portions, medicine_kits')
+        .eq('is_open', true);
+      if (!active) return;
+      if (error) {
+        setReliefSiteError(`Data posko/logistik gagal dimuat: ${error.message}`);
+        return;
+      }
+      setReliefSites((data ?? []) as ReliefSite[]);
+      setReliefSiteError('');
+    };
+    void loadReliefSites();
+    const channel = supabase
+      .channel(`relief-sites-map-${crypto.randomUUID()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'relief_sites' }, () => {
+        void loadReliefSites();
+      })
+      .subscribe((status, error) => {
+        if (!active) return;
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setReliefSiteError(`Pembaruan posko realtime bermasalah${error ? `: ${error.message}` : '.'}`);
+        }
+      });
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   return (
     <MapContainer
@@ -77,10 +136,36 @@ export default function IncidentMap({ reports, selectedLocation, onSelect, canPi
     >
       <MapSizeFixer />
       <MapViewportSync location={selectedLocation} />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <LayersControl position="topright">
+        <LayersControl.BaseLayer checked name="Peta dasar">
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        </LayersControl.BaseLayer>
+        <LayersControl.Overlay checked name={`Posko & logistik (${reliefSites.length})`}>
+          <LayerGroup>
+            {reliefSites.map((site) => (
+              <Marker key={site.id} position={[site.latitude, site.longitude]} icon={reliefSiteIcon}>
+                <Popup>
+                  <div className="relief-site-popup">
+                    <strong>{site.name}</strong>
+                    <span>{site.locality}, {site.district}</span>
+                    <span>Dapur umum: {site.public_kitchen ? 'Tersedia' : 'Tidak tersedia'}</span>
+                    <span>Air bersih: {site.clean_water_liters.toLocaleString('id-ID')} liter</span>
+                    <span>Makanan: {site.food_portions.toLocaleString('id-ID')} porsi</span>
+                    <span>Paket obat: {site.medicine_kits.toLocaleString('id-ID')}</span>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </LayerGroup>
+        </LayersControl.Overlay>
+      </LayersControl>
+
+      {reliefSiteError && (
+        <div className="relief-site-map-error" role="alert">{reliefSiteError}</div>
+      )}
 
       <LocationPicker onSelect={onSelect} canPick={canPick} />
 

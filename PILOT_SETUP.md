@@ -19,10 +19,25 @@ angka kejadian palsu.
 - Foto tersimpan di bucket privat; foto hanya dapat dibaca pelapor dan petugas.
 - Peta menggunakan tile OpenStreetMap dan titik laporan dari database. Titik
   publik digeneralisasi; petugas dan pelapor dapat melihat koordinat tepat.
+- Layer posko menampilkan data lokasi dan stok dari tabel operasional; tidak
+  ada stok contoh yang dimasukkan otomatis.
+- Petugas/admin dapat mengelola lokasi dan stok melalui halaman Posko &
+  logistik; perubahan tampil pada layer peta realtime.
+- Tombol SOS mengirim GPS ke antrean petugas realtime. Sinyal dan koordinat
+  hanya dapat dibaca pelapor dan petugas/admin.
+- Feed gempa BMKG ditampilkan dengan sumber dan waktu feed; ini bukan pengganti
+  peringatan aktif atau arahan evakuasi resmi.
+- Laporan tanpa foto dapat disimpan di perangkat saat offline dan dikirim
+  otomatis setelah koneksi kembali. Aplikasi memiliki app shell PWA.
+- Laporan yang diverifikasi memicu notifikasi realtime dalam aplikasi kepada
+  relawan yang membagikan lokasi dalam radius 5 km.
 
-Pilot ini belum menyediakan integrasi layanan darurat, SMS/WhatsApp, notifikasi
-push, sinkronisasi offline, atau manajemen logistik/posko. Peta dan laporan
-bukan sumber resmi atau instruksi evakuasi.
+Pilot ini tidak menghubungi layanan darurat, SMS/WhatsApp gateway, atau
+notifikasi push latar-belakang. Broadcast 5 km hanya tersedia di dashboard saat
+relawan online. Integrasi provider tersebut memerlukan layanan dan kredensial
+server-side yang belum disediakan. Feed yang digunakan saat ini adalah feed
+gempa BMKG, bukan feed peringatan cuaca/banjir lengkap. Peta dan laporan bukan
+sumber resmi atau instruksi evakuasi.
 
 ## 1. Buat proyek Supabase
 
@@ -57,6 +72,17 @@ Jika database pilot sudah dibuat sebelumnya, jalankan juga migrasi
 [`supabase/migrations/202610310001_add_report_deletion.sql`](./supabase/migrations/202610310001_add_report_deletion.sql)
 di SQL Editor. Migrasi ini memberikan hak hapus yang dibatasi hanya untuk
 pemilik laporan dan petugas.
+
+Jalankan juga migrasi
+[`supabase/migrations/202611110001_emergency_operations.sql`](./supabase/migrations/202611110001_emergency_operations.sql)
+setelah migrasi sebelumnya. Migrasi ini menambahkan direktori posko, sinyal
+SOS, lokasi relawan privat, broadcast dalam radius 5 km, dan idempotensi untuk
+sinkronisasi laporan offline.
+
+Data posko/logistik harus dimasukkan dan diperbarui oleh petugas/admin melalui
+halaman Posko & logistik dan proses operasional yang dipercaya. Jangan
+memasukkan koordinat atau stok perkiraan sebagai data nyata. Stok yang kosong
+berarti nol, bukan jumlah yang belum diketahui.
 
 ## 3. Buat akun petugas/admin untuk tester
 
@@ -106,6 +132,17 @@ Buka `http://localhost:3000`. Uji dengan minimal dua akun berbeda:
 6. Uji kata sandi salah, konfirmasi email, foto tipe/ukuran tidak sah, dan
    gangguan jaringan; pesan kegagalan harus terlihat dan tidak memberi kesan
    data berhasil tersimpan.
+7. Izinkan lokasi pada akun warga, kirim SOS, lalu pastikan sinyal muncul pada
+   akun petugas. Uji perubahan status dan penolakan akses akun warga ke sinyal
+   orang lain.
+8. Pada akun relawan, aktifkan lokasi, verifikasi laporan dalam jarak 5 km,
+   lalu pastikan hanya relawan yang cocok menerima notifikasi. Lokasi berbagi
+   kedaluwarsa untuk pencocokan setelah 2 jam.
+9. Uji antrean laporan tanpa foto saat offline, pulihkan koneksi, lalu pastikan
+   satu laporan tersinkron tanpa duplikasi. Lampiran foto tidak masuk antrean
+   offline; SOS tidak dijadwalkan untuk terkirim terlambat.
+10. Pastikan layer posko hanya berisi data inventaris operasional yang sudah
+    diverifikasi dan feed BMKG tetap ditandai sebagai informasi, bukan arahan.
 
 Koordinat dipilih manual dan dibatasi pada rentang luas di Aceh, bukan divalidasi
 terhadap batas kabupaten resmi. Petugas harus memeriksa wilayah, lokasi, dan

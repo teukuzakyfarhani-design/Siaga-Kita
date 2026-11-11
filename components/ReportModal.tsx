@@ -9,7 +9,8 @@ import {
   ChevronLeft, 
   CheckCircle2, 
   ShieldCheck, 
-  Camera
+  Camera,
+  Navigation
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { MapReport } from '@/components/IncidentMap';
@@ -56,6 +57,7 @@ export default function ReportModal({
   const [locality, setLocality] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [geocoding, setGeocoding] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [geocodeMessage, setGeocodeMessage] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +130,37 @@ export default function ReportModal({
       setGeocoding(false);
       setStep(2);
     }
+  };
+
+  const selectCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGeocodeMessage('Perangkat ini tidak menyediakan akses GPS.');
+      return;
+    }
+    setLocating(true);
+    setGeocodeMessage('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (latitude < 1 || latitude > 7 || longitude < 93 || longitude > 100) {
+          setGeocodeMessage('Koordinat GPS berada di luar cakupan pilot Aceh.');
+        } else {
+          setSelectedPoint([latitude, longitude]);
+          setGeocodeMessage('Koordinat GPS perangkat berhasil dipilih.');
+        }
+        setLocating(false);
+      },
+      (error) => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? 'Akses lokasi ditolak. Izinkan GPS atau pilih titik secara manual.'
+          : error.code === error.TIMEOUT
+            ? 'GPS tidak merespons. Coba lagi atau pilih titik secara manual.'
+            : 'Lokasi GPS tidak tersedia. Pilih titik secara manual.';
+        setGeocodeMessage(message);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
   };
 
   return (
@@ -253,14 +286,19 @@ export default function ReportModal({
           {/* STEP 2: TITIK LOKASI PETA */}
           {step === 2 && (
             <div className="space-y-3 animate-fadeIn">
-              <div className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-800/50 p-3 rounded-xl border border-slate-800 text-xs">
                 <div className="flex items-center space-x-2 text-slate-300">
                   <MapPin className="w-4 h-4 text-emerald-400" />
-                  <span>Klik peta untuk menandai lokasi persis bencana:</span>
+                  <span>Klik peta atau gunakan GPS perangkat:</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${selectedPoint ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
-                  {selectedPoint ? `${selectedPoint[0].toFixed(4)}, ${selectedPoint[1].toFixed(4)}` : 'Belum dipilih'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={selectCurrentLocation} disabled={locating} className="flex items-center gap-1.5 rounded-lg border border-emerald-700/50 bg-emerald-900/30 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-200 disabled:opacity-50">
+                    <Navigation className="w-3.5 h-3.5" />{locating ? 'Mencari GPS…' : 'Gunakan GPS'}
+                  </button>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${selectedPoint ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                    {selectedPoint ? `${selectedPoint[0].toFixed(4)}, ${selectedPoint[1].toFixed(4)}` : 'Belum dipilih'}
+                  </span>
+                </div>
               </div>
               {geocodeMessage && (
                 <p className="rounded-lg border border-emerald-800/40 bg-emerald-950/30 px-3 py-2 text-[11px] text-emerald-200">

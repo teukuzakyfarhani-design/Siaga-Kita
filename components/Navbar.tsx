@@ -163,19 +163,19 @@ export default function Navbar({ userRole = 'guest', userEmail, onLogout }: Navb
 
       {/* 2. BANNER INFORMATIF UNTUK PENGUNJUNG (GUEST BANNER) */}
       {userRole === 'guest' && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2.5 text-xs text-amber-200 flex items-center justify-between">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+        <div className="guest-mode-banner">
+          <div className="guest-mode-banner-inner">
+            <div className="guest-mode-banner-copy">
+              <span className="guest-mode-banner-dot" />
               <span>
                 Anda dalam mode <strong>Pengunjung Umum</strong>. Anda dapat memantau peta kebencanaan publik secara langsung.
               </span>
             </div>
             <Link 
               href="#akun" 
-              className="hidden sm:inline-flex items-center font-bold text-amber-300 hover:text-amber-100 underline ml-2 whitespace-nowrap"
+              className="guest-mode-banner-link"
             >
-              Masuk untuk membuat laporan &rarr;
+              Masuk untuk membuat laporan <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>

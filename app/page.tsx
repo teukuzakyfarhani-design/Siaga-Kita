@@ -6,10 +6,12 @@ import {
   Activity,
   ArrowRight,
   Bell,
+  Boxes,
   Check,
   ChevronDown,
   CircleHelp,
   ClipboardList,
+  Clock3,
   HeartHandshake,
   Home,
   LogOut,
@@ -17,6 +19,7 @@ import {
   MapPin,
   Menu,
   Plus,
+  Radio,
   ShieldCheck,
   Siren,
   Upload,
@@ -28,6 +31,14 @@ import type { Session } from "@supabase/supabase-js";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { MapReport } from "@/components/IncidentMap";
+import EmergencyOperations from "@/components/EmergencyOperations";
+import ReliefSitesPage from "@/components/ReliefSitesPage";
+import {
+  getOfflineReports,
+  removeOfflineReport,
+  saveOfflineReport,
+  type OfflineReport,
+} from "@/lib/offlineReports";
 import SiagaKitaLogo from "@/components/SiagaKitaLogo";
 import "./pilot.css";
 
@@ -97,6 +108,7 @@ const acehDistricts = [
 const navItems = [
   { title: "Dashboard", icon: Home },
   { title: "Peta kejadian", icon: Map },
+  { title: "Posko & logistik", icon: Boxes },
   { title: "Laporan", icon: ClipboardList },
 ];
 
@@ -152,10 +164,12 @@ export default function PilotPage() {
   const [selectedEvidence, setSelectedEvidence] = useState<File | null>(null);
   const [evidencePath, setEvidencePath] = useState<string | null>(null);
   const [evidenceUploading, setEvidenceUploading] = useState(false);
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   const activeUserId = useRef<string | null>(null);
   const reportLoadRequest = useRef(0);
   const reportSubmissionInFlight = useRef(false);
   const evidenceUploadRequest = useRef(0);
+  const offlineSyncInFlight = useRef(false);
 
   const isStaff = profile?.role === "admin" || profile?.role === "officer";
   const loadProfileAndReports = useCallback(
@@ -243,6 +257,58 @@ export default function PilotPage() {
     },
     [supabase],
   );
+
+  const syncOfflineReports = useCallback(async (userId: string) => {
+    if (!supabase || !navigator.onLine || offlineSyncInFlight.current) return;
+    offlineSyncInFlight.current = true;
+    try {
+      const queuedReports = await getOfflineReports(userId);
+      setOfflineQueueCount(queuedReports.length);
+      let syncedCount = 0;
+      for (const queued of queuedReports) {
+        const result = await supabase.from("reports").insert({
+          client_submission_id: queued.id,
+          reporter_id: queued.userId,
+          incident_type: queued.incidentType,
+          district: queued.district,
+          locality: queued.locality,
+          description: queued.description,
+          latitude: queued.latitude,
+          longitude: queued.longitude,
+          status: "pending",
+        });
+        if (result.error) {
+          if (result.error.code === "23505") {
+            const existing = await supabase
+              .from("reports")
+              .select("id")
+              .eq("client_submission_id", queued.id)
+              .maybeSingle();
+            if (existing.error || !existing.data) {
+              setError(`Laporan offline ${queued.id.slice(0, 8)} belum dapat dipastikan tersimpan: ${existing.error?.message ?? result.error.message}`);
+              break;
+            }
+          } else {
+            setError(`Laporan offline belum dapat dikirim: ${result.error.message}`);
+            break;
+          }
+        }
+        await removeOfflineReport(queued.id);
+        syncedCount += 1;
+        setOfflineQueueCount(queuedReports.length - syncedCount);
+        if (!navigator.onLine) break;
+      }
+      if (syncedCount > 0) {
+        await loadProfileAndReports(userId);
+        setNotice(`${syncedCount} laporan offline berhasil dikirim dan menunggu verifikasi petugas.`);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? `Antrean laporan offline gagal diproses: ${error.message}` : "Antrean laporan offline gagal diproses.");
+    } finally {
+      offlineSyncInFlight.current = false;
+    }
+  }, [loadProfileAndReports, supabase]);
+
   useEffect(() => {
     if (!supabase) {
       setLoading(false);
@@ -293,6 +359,24 @@ export default function PilotPage() {
       data.subscription.unsubscribe();
     };
   }, [supabase, loadProfileAndReports]);
+
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) {
+      setOfflineQueueCount(0);
+      return;
+    }
+
+    const synchronize = () => void syncOfflineReports(userId);
+    void getOfflineReports(userId)
+      .then((queuedReports) => setOfflineQueueCount(queuedReports.length))
+      .catch((queueError: unknown) => {
+        setError(queueError instanceof Error ? `Antrean offline gagal dibaca: ${queueError.message}` : "Antrean offline gagal dibaca.");
+      });
+    if (navigator.onLine) synchronize();
+    window.addEventListener("online", synchronize);
+    return () => window.removeEventListener("online", synchronize);
+  }, [session?.user.id, syncOfflineReports]);
 
   async function submitAuthentication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -436,11 +520,43 @@ export default function PilotPage() {
         setError("Tunggu sampai upload foto selesai sebelum mengirim laporan.");
         return;
       }
+      const clientSubmissionId = crypto.randomUUID();
+      const queueOfflineReport = async () => {
+        const queued: OfflineReport = {
+          id: clientSubmissionId,
+          userId: session.user.id,
+          incidentType: type,
+          district,
+          locality,
+          description,
+          latitude: selectedPoint[0],
+          longitude: selectedPoint[1],
+          queuedAt: new Date().toISOString(),
+        };
+        await saveOfflineReport(queued);
+        setOfflineQueueCount((count) => count + 1);
+        setSelectedEvidence(null);
+        setEvidencePath(null);
+        setSelectedPoint(null);
+        setShowReportForm(false);
+        setNotice("Laporan disimpan di perangkat dan akan dikirim otomatis saat koneksi pulih. Foto tidak disertakan.");
+        if (navigator.onLine) void syncOfflineReports(session.user.id);
+      };
+
+      if (!navigator.onLine) {
+        if (evidence) {
+          setError("Laporan berfoto tidak dapat disimpan offline. Hapus foto terlebih dahulu atau kirim saat koneksi pulih.");
+          return;
+        }
+        await queueOfflineReport();
+        return;
+      }
       setNotice("Menyimpan laporan…");
 
       const insertResult = await supabase
         .from("reports")
         .insert({
+          client_submission_id: clientSubmissionId,
           reporter_id: session.user.id,
           incident_type: type,
           district,
@@ -455,6 +571,13 @@ export default function PilotPage() {
         .single();
 
       if (insertResult.error) {
+        const networkFailure =
+          !navigator.onLine ||
+          /network|fetch|timeout|load failed/i.test(insertResult.error.message);
+        if (networkFailure && !evidence) {
+          await queueOfflineReport();
+          return;
+        }
         let cleanupMessage = "";
         if (evidencePath) {
           const cleanup = await supabase.storage.from("report-evidence").remove([evidencePath]);
@@ -471,6 +594,10 @@ export default function PilotPage() {
       setShowReportForm(false);
       setActivePage("Laporan");
       setNotice("Laporan tersimpan dan menunggu verifikasi petugas.");
+    } catch (submissionError) {
+      setError(submissionError instanceof Error
+        ? `Laporan gagal disimpan: ${submissionError.message}`
+        : "Laporan gagal disimpan. Periksa koneksi dan coba lagi.");
     } finally {
       reportSubmissionInFlight.current = false;
       setBusyReport(null);
@@ -590,7 +717,7 @@ export default function PilotPage() {
         </div>
         <div className="pilot-nav-label">MENU UTAMA</div>
         <nav className="pilot-nav" aria-label="Navigasi utama">
-          {navItems.map(({ title, icon: Icon }) => (
+          {[...navItems, ...(profile?.role === "volunteer" ? [{ title: "Relawan & broadcast", icon: Radio }] : [])].map(({ title, icon: Icon }) => (
             <button
               key={title}
               className={activePage === title ? "active" : ""}
@@ -633,6 +760,10 @@ export default function PilotPage() {
         </header>
         <div className="pilot-content">
           <div className="pilot-alert"><ShieldCheck size={16} /><span><strong>Lingkungan pilot.</strong> Gunakan untuk uji coba terbatas, bukan layanan darurat resmi. Untuk keadaan darurat, hubungi layanan setempat.</span></div>
+          {profile?.role !== "volunteer" && (
+            <EmergencyOperations role={profile?.role ?? "citizen"} userId={session.user.id} />
+          )}
+          {offlineQueueCount > 0 && <div className="offline-sync-status" role="status"><Clock3 size={15} />{offlineQueueCount} laporan tersimpan di perangkat dan menunggu koneksi untuk dikirim.</div>}
           {error && <div className="pilot-error" role="alert">{error}<button aria-label="Tutup pesan" onClick={() => setError("")}><X size={15} /></button></div>}
           {notice && <div className="pilot-success" role="status"><Check size={16} />{notice}<button aria-label="Tutup pesan" onClick={() => setNotice("")}><X size={15} /></button></div>}
 
@@ -665,6 +796,21 @@ export default function PilotPage() {
           )}
           {activePage === "Peta kejadian" && (
             <MapPage reports={mapReports} loading={loading} />
+          )}
+          {activePage === "Posko & logistik" && (
+            <ReliefSitesPage isStaff={Boolean(isStaff)} />
+          )}
+          {activePage === "Relawan & broadcast" && profile?.role === "volunteer" && (
+            <>
+              <section className="pilot-welcome">
+                <div>
+                  <div className="pilot-kicker"><i /> KOORDINASI RELAWAN TERDEKAT</div>
+                  <h1>Relawan & broadcast</h1>
+                  <p>Aktifkan lokasi agar menerima laporan bencana terverifikasi dalam radius 5 km.</p>
+                </div>
+              </section>
+              <EmergencyOperations role="volunteer" userId={session.user.id} />
+            </>
           )}
           <footer className="pilot-footer">
             <span>SiagaKita Aceh · Pilot terbatas</span>
@@ -789,6 +935,10 @@ function GuestExperience({
         userRole="guest"
         onLogout={onLogout}
       />
+
+      <div className="guest-warning-wrap">
+        <EmergencyOperations role="guest" />
+      </div>
 
       <section className="guest-hero" id="beranda">
         <div>
