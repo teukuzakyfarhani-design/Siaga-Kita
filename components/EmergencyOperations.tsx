@@ -6,6 +6,7 @@ import {
   BellRing,
   Check,
   Clock3,
+  ExternalLink,
   HeartPulse,
   MapPin,
   Radio,
@@ -476,26 +477,29 @@ function EarlyWarningPanel({
   onRefresh: () => void;
 }) {
   return (
-    <section className="early-warning-panel" aria-live="polite">
+    <section className="early-warning-panel" aria-label="Informasi gempa terbaru dari BMKG" aria-live="polite">
       <span className="early-warning-icon"><Waves size={19} /></span>
       <div className="early-warning-content">
-        <div className="early-warning-heading"><strong>Info gempa terakhir BMKG</strong><span>Feed diperbarui otomatis tiap 3 menit</span></div>
+        <div className="early-warning-heading">
+          <strong>Info gempa terakhir BMKG</strong>
+          <span className="early-warning-feed-status"><i /> Diperbarui otomatis tiap 3 menit</span>
+        </div>
         {error ? (
           <p className="early-warning-error"><AlertTriangle size={14} />{error}<button onClick={onRefresh}>Coba lagi</button></p>
         ) : earthquake ? (
           <div className="early-warning-detail">
-            <strong>M {earthquake.magnitude}</strong>
-            <span>{earthquake.area}</span>
-            <span>{earthquake.date} · {earthquake.time}</span>
-            <span>Kedalaman {earthquake.depth}</span>
-            {earthquake.potential && <p>{earthquake.potential}</p>}
-            {earthquake.felt && <p>Dirasakan: {earthquake.felt}</p>}
+            <strong className="early-warning-magnitude">M {earthquake.magnitude}</strong>
+            <span className="early-warning-area"><MapPin size={13} />{earthquake.area}</span>
+            <span className="early-warning-meta"><Clock3 size={13} />{earthquake.date} · {earthquake.time}</span>
+            <span className="early-warning-meta"><Waves size={13} />Kedalaman {earthquake.depth}</span>
+            {earthquake.potential && <p className="early-warning-context">{earthquake.potential}</p>}
+            {earthquake.felt && <p className="early-warning-context">Dirasakan: {earthquake.felt}</p>}
           </div>
         ) : (
           <p className="early-warning-loading"><Clock3 size={14} />Memuat data BMKG…</p>
         )}
       </div>
-      <a href="https://www.bmkg.go.id/gempabumi/" target="_blank" rel="noreferrer">Sumber BMKG</a>
+      <a href="https://www.bmkg.go.id/gempabumi/" target="_blank" rel="noreferrer">Sumber BMKG <ExternalLink size={13} /></a>
       <small><AlertTriangle size={13} />Info gempa terakhir, bukan jaminan status peringatan aktif. Ikuti kanal resmi BMKG/BPBA.</small>
     </section>
   );
