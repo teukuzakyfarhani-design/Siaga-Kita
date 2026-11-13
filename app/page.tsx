@@ -12,6 +12,7 @@ import {
   CircleHelp,
   ClipboardList,
   Clock3,
+  CloudSun,
   HeartHandshake,
   Home,
   LogOut,
@@ -33,6 +34,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { MapReport } from "@/components/IncidentMap";
 import EmergencyOperations from "@/components/EmergencyOperations";
 import ReliefSitesPage from "@/components/ReliefSitesPage";
+import WeatherMonitoring from "@/components/WeatherMonitoring";
 import {
   getOfflineReports,
   removeOfflineReport,
@@ -109,6 +111,7 @@ const navItems = [
   { title: "Dashboard", icon: Home },
   { title: "Peta kejadian", icon: Map },
   { title: "Posko & logistik", icon: Boxes },
+  { title: "Pantauan cuaca", icon: CloudSun },
   { title: "Laporan", icon: ClipboardList },
 ];
 
@@ -800,6 +803,7 @@ export default function PilotPage() {
           {activePage === "Posko & logistik" && (
             <ReliefSitesPage isStaff={Boolean(isStaff)} />
           )}
+          {activePage === "Pantauan cuaca" && <WeatherMonitoring />}
           {activePage === "Relawan & broadcast" && profile?.role === "volunteer" && (
             <>
               <section className="pilot-welcome">
